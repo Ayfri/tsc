@@ -1,8 +1,16 @@
 {
+	"compilerOptions": {
+		"lib": [
+			"ESNext",
+			"dom"
+		],
+		"pretty": true,
+		"strict": true,
+	},
 	"include": [
 		"./src/**/*.ts",
 		"configs.ts",
 		"mod.ts",
-		"deps.ts"
+		"lib.deno.d.ts"
 	]
 }
