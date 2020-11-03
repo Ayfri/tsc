@@ -1,0 +1,1 @@
+ interface Bite {   readonly length: number; }  class Ayfri {   readonly bite: Bite;    constructor(public biteLength: number, public wtf: String = "aaaa") {     this.bite = {length: biteLength};     this.whaaat(this.wtf);   }    private whaaat(wow: String): void {     console.log(wow);   } }   const a: Ayfri = new Ayfri(15018, "MDRRRRRRRRR"); 
