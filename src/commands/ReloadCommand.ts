@@ -1,6 +1,6 @@
+import {commands} from '../../commandsManager.ts';
 import {configs} from '../../configs.ts';
 import {Message, sendMessage} from '../../deps.ts';
-import {commands} from '../../mod.ts';
 import {commandToFile} from '../../utils/utils.ts';
 import Command from '../classes/Command.ts';
 

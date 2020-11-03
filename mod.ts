@@ -1,30 +1,14 @@
-import {configs} from './configs.ts';
-import Client, {botID, Collection, Intents, Message, sendMessage, SEP} from './deps.ts';
+import Client, {botID, dotEnvConfig, Intents, Message, sendMessage} from './deps.ts';
+import {commands, commandsManager} from './commandsManager.ts';
 import type Command from './src/classes/Command.ts';
 
 
-export const commands = new Collection<string, Command>();
-const cmdDir: Iterable<Deno.DirEntry> = Deno.readDirSync(Deno.realPathSync(configs.commandsFolder));
-
-for (let command of [...cmdDir]) {
-	if (command.isFile && command.name.endsWith('.ts')) {
-		const path: string = Deno.realPathSync(configs.commandsFolder + SEP + command.name);
-		const commandClass: any = await import(`file://${path}`);
-		const cmd: any = commandClass.default;
-		if (!cmd) {
-			console.warn(`Could not load '${command.name}' command !`);
-			continue;
-		}
-		commands.set(cmd.name, new cmd());
-		console.log(`Successfully loaded '${cmd.name}' command !`);
-	}
-}
-
+const cmdDir: Iterable<Deno.DirEntry> = Deno.readDirSync(Deno.realPathSync(dotEnvConfig.commandsFolder));
+await commandsManager(cmdDir);
 console.log(commands);
 
-
 Client({
-	token:         configs.token,
+	token:         dotEnvConfig.token,
 	intents:       [Intents.GUILD_MESSAGES, Intents.DIRECT_MESSAGES],
 	eventHandlers: {
 		ready:         () => console.info('Ready ! '),
@@ -34,10 +18,10 @@ Client({
 				return sendMessage(message.channelID, 'Use the bot with the `tsc ` prefix !');
 			}
 			
-			const args: string[] = message.content.slice(configs.prefix.length).trim().split(/\s+?/);
+			const args: string[] = message.content.slice(dotEnvConfig.prefix.length).trim().split(/\s+?/);
 			const cmd: Command | undefined = commands.find(c => c.name.toLowerCase().includes(args[0].toLowerCase()));
 			
-			if (message.content.startsWith(configs.prefix) && cmd) {
+			if (message.content.startsWith(dotEnvConfig.prefix) && cmd) {
 				args.shift();
 				await cmd.run(message, args);
 			}
