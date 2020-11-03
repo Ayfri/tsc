@@ -2433,7 +2433,7 @@ interface QueuingStrategy<T = any> {
   size?: QueuingStrategySizeCallback<T>;
 }
 
-/** This Streams API interface provides a built-in byte length queuing strategy
+/** This Streams API interface provides a built-in byte length queuing strategy
  * that can be used when constructing streams. */
 declare class CountQueuingStrategy implements QueuingStrategy {
   constructor(options: { highWaterMark: number });
@@ -2514,7 +2514,7 @@ interface UnderlyingSink<W = any> {
   write?: WritableStreamDefaultControllerWriteCallback<W>;
 }
 
-/** This Streams API interface provides a standard abstraction for writing
+/** This Streams API interface provides a standard abstraction for writing
  * streaming data to a destination, known as a sink. This object comes with
  * built-in backpressure and queuing. */
 declare class WritableStream<W = any> {
@@ -2683,8 +2683,8 @@ type HeadersInit = Headers | string[][] | Record<string, string>;
 /** This Fetch API interface allows you to perform various actions on HTTP
  * request and response headers. These actions include retrieving, setting,
  * adding to, and removing. A Headers object has an associated header list,
- * which is initially empty and consists of zero or more name and value pairs.
- *  You can add to this using methods like append() (see Examples.) In all
+ * which is initially empty and consists of zero or more name and value pairs.
+ *  You can add to this using methods like append() (see Examples.) In all
  * methods of this interface, header names are matched by case-insensitive byte
  * sequence. */
 interface Headers {
@@ -3460,7 +3460,7 @@ declare class URLSearchParams {
   toString(): string;
 }
 
-/** The URL interface represents an object providing static methods used for creating object URLs. */
+/** The URL interface represents an object providing static methods used for creating object URLs. */
 declare class URL {
   constructor(url: string, base?: string | URL);
   createObjectURL(object: any): string;
@@ -3665,7 +3665,7 @@ declare class PerformanceEntry {
   toJSON(): any;
 }
 
-/** `PerformanceMark` is an abstract interface for `PerformanceEntry` objects
+/** `PerformanceMark` is an abstract interface for `PerformanceEntry` objects
  * with an entryType of `"mark"`. Entries of this type are created by calling
  * `performance.mark()` to add a named `DOMHighResTimeStamp` (the mark) to the
  * performance timeline. */

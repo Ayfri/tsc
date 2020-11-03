@@ -3,12 +3,12 @@ export type {Message} from 'https://x.nest.land/Discordeno@9.0.15/src/structures
 export {Intents} from 'https://x.nest.land/Discordeno@9.0.15/src/types/options.ts';
 export {Collection} from 'https://x.nest.land/Discordeno@9.0.15/src/utils/collection.ts';
 export {SEP} from 'https://deno.land/std/path/mod.ts';
-import {config} from "https://deno.land/x/dotenv/mod.ts";
-export {exec} from 'https://cdn.depjs.com/exec/mod.ts';
+import {config} from 'https://deno.land/x/dotenv/mod.ts';
 import Client, {botID} from 'https://x.nest.land/Discordeno@9.0.15/src/module/client.ts';
 
+export {exec} from 'https://cdn.depjs.com/exec/mod.ts';
+
 export const dotEnvConfig = config();
-console.log(dotEnvConfig)
 
 export {botID};
 export default Client;

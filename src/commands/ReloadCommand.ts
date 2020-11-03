@@ -17,11 +17,11 @@ export default class ReloadCommand extends Command {
 			const path: string = Deno.realPathSync(configs.commandsFolder);
 			const cmdFileName: string = commandToFile(command.name);
 			const response = Deno.run({
-				cmd: ['cmd', 'c/', `Deno cache --reload ${path}/${cmdFileName}`],
-				cwd: path,
+				cmd:    ['cmd', 'c/', `Deno cache --reload ${path}/${cmdFileName}`],
+				cwd:    path,
 				stdout: 'piped',
 				stderr: 'piped',
-				stdin: 'piped',
+				stdin:  'piped',
 			});
 			console.log(new TextDecoder('utf-8').decode(await response.output()));
 			console.log(new TextDecoder('utf-8').decode(await response.stderrOutput()));

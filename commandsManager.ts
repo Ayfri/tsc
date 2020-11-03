@@ -1,6 +1,7 @@
 import {configs} from './configs.ts';
 import {Collection, SEP} from './deps.ts';
 import type Command from './src/classes/Command.ts';
+
 export const commands = new Collection<string, Command>();
 
 export async function commandsManager(cmdDir: Iterable<Deno.DirEntry>): Promise<void> {
