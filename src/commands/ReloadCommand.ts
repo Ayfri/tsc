@@ -29,7 +29,7 @@ export default class ReloadCommand extends Command {
 			
 			commands.set(cmd.name, cmd);
 			
-			sendMessage(message.channelID, `Reloaded command \`${cmd.name}\` aaaa !`);
+			sendMessage(message.channelID, `Reloaded command \`${cmd.name}\` !`);
 		}
 	}
 }

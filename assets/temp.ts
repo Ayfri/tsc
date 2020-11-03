@@ -1,1 +1,1 @@
- enum aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa {   b = "bite",   c = "aaaa",   d = "non" }  let bite: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa; 
+ interface Test {un:string;deux:number;trois:Test} 

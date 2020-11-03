@@ -1,6 +1,5 @@
-declare enum aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa {
-    b = "bite",
-    c = "aaaa",
-    d = "non"
+interface Test {
+    un: string;
+    deux: number;
+    trois: Test;
 }
-declare let bite: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa;
