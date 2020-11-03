@@ -1,5 +1,5 @@
-import {Collection, dotEnvConfig, SEP} from './deps.ts';
-import type Command from './src/classes/Command.ts';
+import {Collection, dotEnvConfig, SEP} from '../deps.ts';
+import type Command from './classes/Command.ts';
 
 export const commands = new Collection<string, Command>();
 

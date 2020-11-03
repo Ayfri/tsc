@@ -1,7 +1,6 @@
-import {commands} from '../../commandsManager.ts';
-import {configs} from '../../configs.ts';
-import {Message, sendMessage} from '../../deps.ts';
-import {commandToFile} from '../../utils/utils.ts';
+import {commands} from '../commandsManager.ts';
+import {dotEnvConfig, Message, sendMessage} from '../../deps.ts';
+import {commandToFile} from '../utils/utils.ts';
 import Command from '../classes/Command.ts';
 
 export default class ReloadCommand extends Command {
@@ -14,7 +13,7 @@ export default class ReloadCommand extends Command {
 		const command: Command | undefined = commands.find(c => c.name.toLowerCase().includes(commandName.toLowerCase()));
 		if (command) {
 			commands.delete(command.name);
-			const path: string = Deno.realPathSync(configs.commandsFolder);
+			const path: string = Deno.realPathSync(dotEnvConfig.commandsFolder);
 			const cmdFileName: string = commandToFile(command.name);
 			const response = Deno.run({
 				cmd:    ['cmd', 'c/', `Deno cache --reload ${path}/${cmdFileName}`],

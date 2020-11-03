@@ -1,4 +1,4 @@
-import {commands, commandsManager} from './commandsManager.ts';
+import {commands, commandsManager} from './src/commandsManager.ts';
 import Client, {botID, dotEnvConfig, Intents, Message, sendMessage} from './deps.ts';
 import type Command from './src/classes/Command.ts';
 
