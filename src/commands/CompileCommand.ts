@@ -21,7 +21,7 @@ export default class CompileCommand extends Command {
 			stdout: 'piped',
 		});
 		
-		const result: string = Deno.readTextFileSync(CompileCommand.tempPath.replace('.ts', '.js'));
+		const result: string = Deno.readTextFileSync(CompileCommand.tempPath.replace(/.ts$/, '.js'));
 		const errors: string = new TextDecoder('utf8').decode(await process.output());
 		
 		sendMessage(message.channelID, codeBlock(crop(result, 1990), 'js'));

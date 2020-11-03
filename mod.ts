@@ -4,7 +4,6 @@ import type Command from './src/classes/Command.ts';
 
 const cmdDir: Iterable<Deno.DirEntry> = Deno.readDirSync(Deno.realPathSync(dotEnvConfig.commandsFolder));
 await commandsManager(cmdDir);
-console.log(commands);
 
 Client({
 	token:         dotEnvConfig.token,
