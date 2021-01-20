@@ -1,4 +1,4 @@
-// Copyright 2018-2020 the Deno authors. All rights reserved. MIT license.
+// Copyright 2018-2021 the Deno authors. All rights reserved. MIT license.
 
 /// <reference no-default-lib="true" />
 /// <reference lib="esnext" />
@@ -40,7 +40,7 @@ declare interface Performance {
 
 declare interface PerformanceMarkOptions {
   /** Metadata to be included in the mark. */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // deno-lint-ignore no-explicit-any
   detail?: any;
 
   /** Timestamp to be used as the mark time. */
@@ -49,7 +49,7 @@ declare interface PerformanceMarkOptions {
 
 declare interface PerformanceMeasureOptions {
   /** Metadata to be included in the measure. */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // deno-lint-ignore no-explicit-any
   detail?: any;
 
   /** Timestamp to be used as the start time or string to be used as start
@@ -676,6 +676,52 @@ declare namespace Deno {
     whence: SeekMode,
   ): Promise<number>;
 
+  /**
+   * Synchronously flushes any pending data and metadata operations of the given file stream to disk.
+   *  ```ts
+   * const file = Deno.openSync("my_file.txt", { read: true, write: true, create: true });
+   * Deno.writeSync(file.rid, new TextEncoder().encode("Hello World"));
+   * Deno.ftruncateSync(file.rid, 1);
+   * Deno.fsyncSync(file.rid);
+   * console.log(new TextDecoder().decode(Deno.readFileSync("my_file.txt"))); // H
+   * ```
+   */
+  export function fsyncSync(rid: number): void;
+
+  /**
+   * Flushes any pending data and metadata operations of the given file stream to disk.
+   *  ```ts
+   * const file = await Deno.open("my_file.txt", { read: true, write: true, create: true });
+   * await Deno.write(file.rid, new TextEncoder().encode("Hello World"));
+   * await Deno.ftruncate(file.rid, 1);
+   * await Deno.fsync(file.rid);
+   * console.log(new TextDecoder().decode(await Deno.readFile("my_file.txt"))); // H
+   * ```
+   */
+  export function fsync(rid: number): Promise<void>;
+
+  /*
+   * Synchronously flushes any pending data operations of the given file stream to disk.
+   *  ```ts
+   * const file = Deno.openSync("my_file.txt", { read: true, write: true, create: true });
+   * Deno.writeSync(file.rid, new TextEncoder().encode("Hello World"));
+   * Deno.fdatasyncSync(file.rid);
+   * console.log(new TextDecoder().decode(Deno.readFileSync("my_file.txt"))); // Hello World
+   * ```
+   */
+  export function fdatasyncSync(rid: number): void;
+
+  /**
+   * Flushes any pending data operations of the given file stream to disk.
+   *  ```ts
+   * const file = await Deno.open("my_file.txt", { read: true, write: true, create: true });
+   * await Deno.write(file.rid, new TextEncoder().encode("Hello World"));
+   * await Deno.fdatasync(file.rid);
+   * console.log(new TextDecoder().decode(await Deno.readFile("my_file.txt"))); // Hello World
+   * ```
+   */
+  export function fdatasync(rid: number): Promise<void>;
+
   /** Close the given resource ID (rid) which has been previously opened, such
    * as via opening or creating a file.  Closing a file when you are finished
    * with it is important to avoid leaking resources.
@@ -710,11 +756,11 @@ declare namespace Deno {
   }
 
   /** A handle for `stdin`. */
-  export const stdin: Reader & ReaderSync & Closer & { rid: number };
+  export const stdin: Reader & ReaderSync & Closer & { readonly rid: number };
   /** A handle for `stdout`. */
-  export const stdout: Writer & WriterSync & Closer & { rid: number };
+  export const stdout: Writer & WriterSync & Closer & { readonly rid: number };
   /** A handle for `stderr`. */
-  export const stderr: Writer & WriterSync & Closer & { rid: number };
+  export const stderr: Writer & WriterSync & Closer & { readonly rid: number };
 
   export interface OpenOptions {
     /** Sets the option for read access. This option, when `true`, means that the
@@ -1033,7 +1079,7 @@ declare namespace Deno {
   export function makeTempDir(options?: MakeTempOptions): Promise<string>;
 
   /** Synchronously creates a new temporary file in the default directory for
-   * temporary files (see also `Deno.dir("temp")`), unless `dir` is specified.
+   * temporary files, unless `dir` is specified.
    * Other optional options include prefixing and suffixing the directory name
    * with `prefix` and `suffix` respectively.
    *
@@ -1052,7 +1098,7 @@ declare namespace Deno {
   export function makeTempFileSync(options?: MakeTempOptions): string;
 
   /** Creates a new temporary file in the default directory for temporary
-   * files (see also `Deno.dir("temp")`), unless `dir` is specified.  Other
+   * files, unless `dir` is specified.  Other
    * optional options include prefixing and suffixing the directory name with
    * `prefix` and `suffix` respectively.
    *
@@ -1225,8 +1271,8 @@ declare namespace Deno {
    * Requires `allow-read` and `allow-write` permission. */
   export function rename(oldpath: string, newpath: string): Promise<void>;
 
-  /** Synchronously reads and returns the entire contents of a file as utf8 encoded string
-   *  encoded string. Reading a directory returns an empty string.
+  /** Synchronously reads and returns the entire contents of a file as utf8
+   *  encoded string. Reading a directory throws an error.
    *
    * ```ts
    * const data = Deno.readTextFileSync("hello.txt");
@@ -1236,8 +1282,8 @@ declare namespace Deno {
    * Requires `allow-read` permission. */
   export function readTextFileSync(path: string | URL): string;
 
-  /** Asynchronously reads and returns the entire contents of a file as a utf8
-   *  encoded string. Reading a directory returns an empty data array.
+  /** Asynchronously reads and returns the entire contents of a file as utf8
+   *  encoded string. Reading a directory throws an error.
    *
    * ```ts
    * const data = await Deno.readTextFile("hello.txt");
@@ -1445,7 +1491,7 @@ declare namespace Deno {
    * Throws TypeError if called with a hard link
    *
    * Requires `allow-read` permission. */
-  export function readLinkSync(path: string): string;
+  export function readLinkSync(path: string | URL): string;
 
   /** Resolves to the full path destination of the named symbolic link.
    *
@@ -1457,7 +1503,7 @@ declare namespace Deno {
    * Throws TypeError if called with a hard link
    *
    * Requires `allow-read` permission. */
-  export function readLink(path: string): Promise<string>;
+  export function readLink(path: string | URL): Promise<string>;
 
   /** Resolves to a `Deno.FileInfo` for the specified `path`. If `path` is a
    * symlink, information for the symlink will be returned instead of what it
@@ -1665,11 +1711,7 @@ declare namespace Deno {
     /** The resource ID of the connection. */
     readonly rid: number;
     /** Shuts down (`shutdown(2)`) the writing side of the TCP connection. Most
-     * callers should just use `close()`.
-     *
-     * **Unstable** because of lack of testing and because Deno.shutdown is also
-     * unstable.
-     * */
+     * callers should just use `close()`. */
     closeWrite(): void;
   }
 
@@ -1763,6 +1805,18 @@ declare namespace Deno {
    */
   export function connectTls(options: ConnectTlsOptions): Promise<Conn>;
 
+  /** Shutdown socket send operations.
+   *
+   * Matches behavior of POSIX shutdown(3).
+   *
+   * ```ts
+   * const listener = Deno.listen({ port: 80 });
+   * const conn = await listener.accept();
+   * Deno.shutdown(conn.rid);
+   * ```
+   */
+  export function shutdown(rid: number): Promise<void>;
+
   export interface Metrics {
     opsDispatched: number;
     opsDispatchedSync: number;
@@ -1782,26 +1836,26 @@ declare namespace Deno {
    * between Deno JavaScript and Deno Rust.
    *
    *      > console.table(Deno.metrics())
-   *      ┌─────────────────────────┬────────┐
-   *      │         (index)         │ Values │
-   *      ├─────────────────────────┼────────┤
-   *      │      opsDispatched      │   3    │
-   *      │    opsDispatchedSync    │   2    │
-   *      │   opsDispatchedAsync    │   1    │
-   *      │ opsDispatchedAsyncUnref │   0    │
-   *      │      opsCompleted       │   3    │
-   *      │    opsCompletedSync     │   2    │
-   *      │    opsCompletedAsync    │   1    │
-   *      │ opsCompletedAsyncUnref  │   0    │
-   *      │    bytesSentControl     │   73   │
-   *      │      bytesSentData      │   0    │
-   *      │      bytesReceived      │  375   │
-   *      └─────────────────────────┴────────┘
+   *      ÔöîÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö¼ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÉ
+   *      Ôöé         (index)         Ôöé Values Ôöé
+   *      Ôö£ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö╝ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöñ
+   *      Ôöé      opsDispatched      Ôöé   3    Ôöé
+   *      Ôöé    opsDispatchedSync    Ôöé   2    Ôöé
+   *      Ôöé   opsDispatchedAsync    Ôöé   1    Ôöé
+   *      Ôöé opsDispatchedAsyncUnref Ôöé   0    Ôöé
+   *      Ôöé      opsCompleted       Ôöé   3    Ôöé
+   *      Ôöé    opsCompletedSync     Ôöé   2    Ôöé
+   *      Ôöé    opsCompletedAsync    Ôöé   1    Ôöé
+   *      Ôöé opsCompletedAsyncUnref  Ôöé   0    Ôöé
+   *      Ôöé    bytesSentControl     Ôöé   73   Ôöé
+   *      Ôöé      bytesSentData      Ôöé   0    Ôöé
+   *      Ôöé      bytesReceived      Ôöé  375   Ôöé
+   *      ÔööÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔö┤ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÿ
    */
   export function metrics(): Metrics;
 
   interface ResourceMap {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // deno-lint-ignore no-explicit-any
     [rid: number]: any;
   }
 
@@ -1941,19 +1995,23 @@ declare namespace Deno {
   export function run<T extends RunOptions = RunOptions>(opt: T): Process<T>;
 
   export interface InspectOptions {
-    /** Traversal depth for nested objects. Defaults to 4. */
-    depth?: number;
-    /** Sort Object, Set and Map entries by key. Defaults to false. */
-    sorted?: boolean;
-    /** Add a trailing comma for multiline collections. Defaults to false. */
-    trailingComma?: boolean;
+    /** Stylize output with ANSI colors. Defaults to false. */
+    colors?: boolean;
     /** Try to fit more than one entry of a collection on the same line.
      * Defaults to true. */
     compact?: boolean;
+    /** Traversal depth for nested objects. Defaults to 4. */
+    depth?: number;
     /** The maximum number of iterable entries to print. Defaults to 100. */
     iterableLimit?: number;
     /** Show a Proxy's target and handler. Defaults to false. */
     showProxy?: boolean;
+    /** Sort Object, Set and Map entries by key. Defaults to false. */
+    sorted?: boolean;
+    /** Add a trailing comma for multiline collections. Defaults to false. */
+    trailingComma?: boolean;
+    /*** Evaluate the result of calling getters. Defaults to false. */
+    getters?: boolean;
   }
 
   /** Converts the input into a string that has the same format as printed by
@@ -2004,13 +2062,15 @@ declare namespace Deno {
     env?: string;
   };
 
-  interface Version {
-    deno: string;
-    v8: string;
-    typescript: string;
-  }
   /** Version related information. */
-  export const version: Version;
+  export const version: {
+    /** Deno's version. For example: `"1.0.0"` */
+    deno: string;
+    /** The V8 version used by Deno. For example: `"8.0.0.0"` */
+    v8: string;
+    /** The TypeScript version used by Deno. For example: `"4.0.0"` */
+    typescript: string;
+  };
 
   /** Returns the script arguments to the program. If for example we run a
    * program:
@@ -2032,9 +2092,9 @@ declare namespace Deno {
   export const mainModule: string;
 }
 
-// Copyright 2018-2020 the Deno authors. All rights reserved. MIT license.
+// Copyright 2018-2021 the Deno authors. All rights reserved. MIT license.
 
-/* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any, no-var */
+// deno-lint-ignore-file no-explicit-any
 
 /// <reference no-default-lib="true" />
 /// <reference lib="esnext" />
@@ -2043,6 +2103,7 @@ declare class DOMException extends Error {
   constructor(message?: string, name?: string);
   readonly name: string;
   readonly message: string;
+  readonly code: number;
 }
 
 interface EventInit {
@@ -2135,7 +2196,7 @@ declare class EventTarget {
      *
      * When set to true, options's passive indicates that the callback will not
      * cancel the event by invoking preventDefault(). This is used to enable
-     * performance optimizations described in § 2.8 Observing event listeners.
+     * performance optimizations described in ┬º 2.8 Observing event listeners.
      *
      * When set to true, options's once indicates that the callback will only be
      * invoked once after which the event listener will be removed.
@@ -2180,6 +2241,23 @@ interface AddEventListenerOptions extends EventListenerOptions {
 
 interface EventListenerOptions {
   capture?: boolean;
+}
+
+interface ProgressEventInit extends EventInit {
+  lengthComputable?: boolean;
+  loaded?: number;
+  total?: number;
+}
+
+/** Events measuring progress of an underlying process, like an HTTP request
+ * (for an XMLHttpRequest, or the loading of the underlying resource of an
+ * <img>, <audio>, <video>, <style> or <link>). */
+declare class ProgressEvent<T extends EventTarget = EventTarget> extends Event {
+  constructor(type: string, eventInitDict?: ProgressEventInit);
+  readonly lengthComputable: boolean;
+  readonly loaded: number;
+  readonly target: T | null;
+  readonly total: number;
 }
 
 /** Decodes a string of data which has been encoded using base-64 encoding.
@@ -2265,7 +2343,7 @@ interface AbortSignal extends EventTarget {
   ): void;
 }
 
-declare const AbortSignal: {
+declare var AbortSignal: {
   prototype: AbortSignal;
   new (): AbortSignal;
 };
@@ -2330,9 +2408,9 @@ declare var FileReader: {
   readonly LOADING: number;
 };
 
-// Copyright 2018-2020 the Deno authors. All rights reserved. MIT license.
+// Copyright 2018-2021 the Deno authors. All rights reserved. MIT license.
 
-/* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any, no-var */
+// deno-lint-ignore-file no-explicit-any
 
 /// <reference no-default-lib="true" />
 /// <reference lib="esnext" />
@@ -2369,11 +2447,21 @@ interface ReadableStreamDefaultReader<R = any> {
   releaseLock(): void;
 }
 
+declare var ReadableStreamDefaultReader: {
+  prototype: ReadableStreamDefaultReader;
+  new <R>(stream: ReadableStream<R>): ReadableStreamDefaultReader<R>;
+};
+
 interface ReadableStreamReader<R = any> {
   cancel(): Promise<void>;
   read(): Promise<ReadableStreamReadResult<R>>;
   releaseLock(): void;
 }
+
+declare var ReadableStreamReader: {
+  prototype: ReadableStreamReader;
+  new (): ReadableStreamReader;
+};
 
 interface ReadableByteStreamControllerCallback {
   (controller: ReadableByteStreamController): void | PromiseLike<void>;
@@ -2385,6 +2473,14 @@ interface UnderlyingByteSource {
   pull?: ReadableByteStreamControllerCallback;
   start?: ReadableByteStreamControllerCallback;
   type: "bytes";
+}
+
+interface UnderlyingSink<W = any> {
+  abort?: WritableStreamErrorCallback;
+  close?: WritableStreamDefaultControllerCloseCallback;
+  start?: WritableStreamDefaultControllerStartCallback;
+  type?: undefined;
+  write?: WritableStreamDefaultControllerWriteCallback<W>;
 }
 
 interface UnderlyingSource<R = any> {
@@ -2409,6 +2505,11 @@ interface ReadableStreamDefaultController<R = any> {
   error(error?: any): void;
 }
 
+declare var ReadableStreamDefaultController: {
+  prototype: ReadableStreamDefaultController;
+  new (): ReadableStreamDefaultController;
+};
+
 interface ReadableByteStreamController {
   readonly byobRequest: undefined;
   readonly desiredSize: number | null;
@@ -2416,6 +2517,11 @@ interface ReadableByteStreamController {
   enqueue(chunk: ArrayBufferView): void;
   error(error?: any): void;
 }
+
+declare var ReadableByteStreamController: {
+  prototype: ReadableByteStreamController;
+  new (): ReadableByteStreamController;
+};
 
 interface PipeOptions {
   preventAbort?: boolean;
@@ -2454,14 +2560,15 @@ declare class ByteLengthQueuingStrategy
 interface ReadableStream<R = any> {
   readonly locked: boolean;
   cancel(reason?: any): Promise<void>;
+  /**
+   * @deprecated This is no longer part of the Streams standard and the async
+   *             iterable should be obtained by just using the stream as an
+   *             async iterator.
+   */
   getIterator(options?: { preventCancel?: boolean }): AsyncIterableIterator<R>;
-  // getReader(options: { mode: "byob" }): ReadableStreamBYOBReader;
   getReader(): ReadableStreamDefaultReader<R>;
   pipeThrough<T>(
-    {
-      writable,
-      readable,
-    }: {
+    { writable, readable }: {
       writable: WritableStream<R>;
       readable: ReadableStream<T>;
     },
@@ -2474,7 +2581,7 @@ interface ReadableStream<R = any> {
   }): AsyncIterableIterator<R>;
 }
 
-declare const ReadableStream: {
+declare var ReadableStream: {
   prototype: ReadableStream;
   new (
     underlyingSource: UnderlyingByteSource,
@@ -2506,27 +2613,22 @@ interface WritableStreamErrorCallback {
   (reason: any): void | PromiseLike<void>;
 }
 
-interface UnderlyingSink<W = any> {
-  abort?: WritableStreamErrorCallback;
-  close?: WritableStreamDefaultControllerCloseCallback;
-  start?: WritableStreamDefaultControllerStartCallback;
-  type?: undefined;
-  write?: WritableStreamDefaultControllerWriteCallback<W>;
-}
-
 /** This Streams API interface provides a standard abstraction for writing
  * streaming data to a destination, known as a sink. This object comes with
  * built-in backpressure and queuing. */
-declare class WritableStream<W = any> {
-  constructor(
-    underlyingSink?: UnderlyingSink<W>,
-    strategy?: QueuingStrategy<W>,
-  );
+interface WritableStream<W = any> {
   readonly locked: boolean;
   abort(reason?: any): Promise<void>;
-  close(): Promise<void>;
   getWriter(): WritableStreamDefaultWriter<W>;
 }
+
+declare var WritableStream: {
+  prototype: WritableStream;
+  new <W = any>(
+    underlyingSink?: UnderlyingSink<W>,
+    strategy?: QueuingStrategy<W>,
+  ): WritableStream<W>;
+};
 
 /** This Streams API interface represents a controller allowing control of a
  * WritableStream's state. When constructing a WritableStream, the underlying
@@ -2550,15 +2652,24 @@ interface WritableStreamDefaultWriter<W = any> {
   write(chunk: W): Promise<void>;
 }
 
-declare class TransformStream<I = any, O = any> {
-  constructor(
-    transformer?: Transformer<I, O>,
-    writableStrategy?: QueuingStrategy<I>,
-    readableStrategy?: QueuingStrategy<O>,
-  );
+declare var WritableStreamDefaultWriter: {
+  prototype: WritableStreamDefaultWriter;
+  new (): WritableStreamDefaultWriter;
+};
+
+interface TransformStream<I = any, O = any> {
   readonly readable: ReadableStream<O>;
   readonly writable: WritableStream<I>;
 }
+
+declare var TransformStream: {
+  prototype: TransformStream;
+  new <I = any, O = any>(
+    transformer?: Transformer<I, O>,
+    writableStrategy?: QueuingStrategy<I>,
+    readableStrategy?: QueuingStrategy<O>,
+  ): TransformStream<I, O>;
+};
 
 interface TransformStreamDefaultController<O = any> {
   readonly desiredSize: number | null;
@@ -2684,7 +2795,7 @@ type HeadersInit = Headers | string[][] | Record<string, string>;
  * request and response headers. These actions include retrieving, setting,
  * adding to, and removing. A Headers object has an associated header list,
  * which is initially empty and consists of zero or more name and value pairs.
- *  You can add to this using methods like append() (see Examples.) In all
+ * You can add to this using methods like append() (see Examples). In all
  * methods of this interface, header names are matched by case-insensitive byte
  * sequence. */
 interface Headers {
@@ -3042,93 +3153,318 @@ declare function fetch(
   init?: RequestInit,
 ): Promise<Response>;
 
-// Copyright 2018-2020 the Deno authors. All rights reserved. MIT license.
+// Copyright 2018-2021 the Deno authors. All rights reserved. MIT license.
 
-/* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any, no-var */
+// deno-lint-ignore-file no-explicit-any
+
+/// <reference no-default-lib="true" />
+/// <reference lib="esnext" />
+
+interface CloseEventInit extends EventInit {
+  code?: number;
+  reason?: string;
+  wasClean?: boolean;
+}
+
+declare class CloseEvent extends Event {
+  constructor(type: string, eventInitDict?: CloseEventInit);
+  /**
+   * Returns the WebSocket connection close code provided by the server.
+   */
+  readonly code: number;
+  /**
+   * Returns the WebSocket connection close reason provided by the server.
+   */
+  readonly reason: string;
+  /**
+   * Returns true if the connection closed cleanly; false otherwise.
+   */
+  readonly wasClean: boolean;
+}
+
+interface WebSocketEventMap {
+  close: CloseEvent;
+  error: Event;
+  message: MessageEvent;
+  open: Event;
+}
+
+/** Provides the API for creating and managing a WebSocket connection to a server, as well as for sending and receiving data on the connection. */
+declare class WebSocket extends EventTarget {
+  constructor(url: string, protocols?: string | string[]);
+
+  static readonly CLOSED: number;
+  static readonly CLOSING: number;
+  static readonly CONNECTING: number;
+  static readonly OPEN: number;
+
+  /**
+   * Returns a string that indicates how binary data from the WebSocket object is exposed to scripts:
+   *
+   * Can be set, to change how binary data is returned. The default is "blob".
+   */
+  binaryType: BinaryType;
+  /**
+   * Returns the number of bytes of application data (UTF-8 text and binary data) that have been queued using send() but not yet been transmitted to the network.
+   *
+   * If the WebSocket connection is closed, this attribute's value will only increase with each call to the send() method. (The number does not reset to zero once the connection closes.)
+   */
+  readonly bufferedAmount: number;
+  /**
+   * Returns the extensions selected by the server, if any.
+   */
+  readonly extensions: string;
+  onclose: ((this: WebSocket, ev: CloseEvent) => any) | null;
+  onerror: ((this: WebSocket, ev: Event | ErrorEvent) => any) | null;
+  onmessage: ((this: WebSocket, ev: MessageEvent) => any) | null;
+  onopen: ((this: WebSocket, ev: Event) => any) | null;
+  /**
+   * Returns the subprotocol selected by the server, if any. It can be used in conjunction with the array form of the constructor's second argument to perform subprotocol negotiation.
+   */
+  readonly protocol: string;
+  /**
+   * Returns the state of the WebSocket object's connection. It can have the values described below.
+   */
+  readonly readyState: number;
+  /**
+   * Returns the URL that was used to establish the WebSocket connection.
+   */
+  readonly url: string;
+  /**
+   * Closes the WebSocket connection, optionally using code as the the WebSocket connection close code and reason as the the WebSocket connection close reason.
+   */
+  close(code?: number, reason?: string): void;
+  /**
+   * Transmits data using the WebSocket connection. data can be a string, a Blob, an ArrayBuffer, or an ArrayBufferView.
+   */
+  send(data: string | ArrayBufferLike | Blob | ArrayBufferView): void;
+  readonly CLOSED: number;
+  readonly CLOSING: number;
+  readonly CONNECTING: number;
+  readonly OPEN: number;
+  addEventListener<K extends keyof WebSocketEventMap>(
+    type: K,
+    listener: (this: WebSocket, ev: WebSocketEventMap[K]) => any,
+    options?: boolean | AddEventListenerOptions,
+  ): void;
+  addEventListener(
+    type: string,
+    listener: EventListenerOrEventListenerObject,
+    options?: boolean | AddEventListenerOptions,
+  ): void;
+  removeEventListener<K extends keyof WebSocketEventMap>(
+    type: K,
+    listener: (this: WebSocket, ev: WebSocketEventMap[K]) => any,
+    options?: boolean | EventListenerOptions,
+  ): void;
+  removeEventListener(
+    type: string,
+    listener: EventListenerOrEventListenerObject,
+    options?: boolean | EventListenerOptions,
+  ): void;
+}
+
+type BinaryType = "arraybuffer" | "blob";
+
+// Copyright 2018-2021 the Deno authors. All rights reserved. MIT license.
+
+// Documentation partially adapted from [MDN](https://developer.mozilla.org/),
+// by Mozilla Contributors, which is licensed under CC-BY-SA 2.5.
 
 /// <reference no-default-lib="true" />
 /// <reference lib="esnext" />
 /// <reference lib="deno.web" />
 /// <reference lib="deno.fetch" />
+/// <reference lib="deno.websocket" />
 
 declare namespace WebAssembly {
-  export class CompileError {
+  /**
+   * The `WebAssembly.CompileError` object indicates an error during WebAssembly decoding or validation.
+   *
+   * [MDN](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/CompileError)
+   */
+  export class CompileError extends Error {
+    /** Creates a new `WebAssembly.CompileError` object. */
     constructor();
   }
 
+  /**
+   * A `WebAssembly.Global` object represents a global variable instance, accessible from
+   * both JavaScript and importable/exportable across one or more `WebAssembly.Module`
+   * instances. This allows dynamic linking of multiple modules.
+   *
+   * [MDN](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/Global)
+   */
   export class Global {
+    /** Creates a new `Global` object. */
     constructor(descriptor: GlobalDescriptor, v?: any);
 
+    /**
+     * The value contained inside the global variable ÔÇö this can be used to directly set
+     * and get the global's value.
+     */
     value: any;
+
+    /** Old-style method that returns the value contained inside the global variable. */
     valueOf(): any;
   }
 
+  /**
+   * A `WebAssembly.Instance` object is a stateful, executable instance of a `WebAssembly.Module`.
+   * Instance objects contain all the Exported WebAssembly functions that allow calling into
+   * WebAssembly code from JavaScript.
+   *
+   * [MDN](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/Instance)
+   */
   export class Instance {
+    /** Creates a new Instance object. */
     constructor(module: Module, importObject?: Imports);
+
+    /**
+     * Returns an object containing as its members all the functions exported from the
+     * WebAssembly module instance, to allow them to be accessed and used by JavaScript.
+     * Read-only.
+     */
     readonly exports: Exports;
   }
 
-  export class LinkError {
+  /**
+   * The `WebAssembly.LinkError` object indicates an error during module instantiation
+   * (besides traps from the start function).
+   *
+   * [MDN](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/LinkError)
+   */
+  export class LinkError extends Error {
+    /** Creates a new WebAssembly.LinkError object. */
     constructor();
   }
 
+  /**
+   * The `WebAssembly.Memory` object is a resizable `ArrayBuffer` or `SharedArrayBuffer` that
+   * holds the raw bytes of memory accessed by a WebAssembly Instance.
+   *
+   * A memory created by JavaScript or in WebAssembly code will be accessible and mutable
+   * from both JavaScript and WebAssembly.
+   *
+   * [MDN](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/Memory)
+   */
   export class Memory {
+    /** Creates a new `Memory` object. */
     constructor(descriptor: MemoryDescriptor);
+
+    /** An accessor property that returns the buffer contained in the memory. */
     readonly buffer: ArrayBuffer;
+
+    /**
+     * Increases the size of the memory instance by a specified number of WebAssembly
+     * pages (each one is 64KB in size).
+     */
     grow(delta: number): number;
   }
 
+  /**
+   * A `WebAssembly.Module` object contains stateless WebAssembly code that has already been compiled
+   * by the browser ÔÇö this can be efficiently shared with Workers, and instantiated multiple times.
+   *
+   * [MDN](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/Module)
+   */
   export class Module {
+    /** Creates a new `Module` object. */
     constructor(bytes: BufferSource);
+
+    /**
+     * Given a `Module` and string, returns a copy of the contents of all custom sections in the
+     * module with the given string name.
+     * */
     static customSections(
       moduleObject: Module,
       sectionName: string,
     ): ArrayBuffer[];
+
+    /** Given a `Module`, returns an array containing descriptions of all the declared exports. */
     static exports(moduleObject: Module): ModuleExportDescriptor[];
+
+    /** Given a `Module`, returns an array containing descriptions of all the declared imports. */
     static imports(moduleObject: Module): ModuleImportDescriptor[];
   }
 
-  export class RuntimeError {
+  /**
+   * The `WebAssembly.RuntimeError` object is the error type that is thrown whenever WebAssembly
+   * specifies a trap.
+   *
+   * [MDN](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/RuntimeError)
+   */
+  export class RuntimeError extends Error {
+    /** Creates a new `WebAssembly.RuntimeError` object. */
     constructor();
   }
 
+  /**
+   * The `WebAssembly.Table()` object is a JavaScript wrapper object ÔÇö an array-like structure
+   * representing a WebAssembly Table, which stores function references. A table created by
+   * JavaScript or in WebAssembly code will be accessible and mutable from both JavaScript
+   * and WebAssembly.
+   *
+   * [MDN](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/Table)
+   */
   export class Table {
+    /** Creates a new `Table` object. */
     constructor(descriptor: TableDescriptor);
+
+    /** Returns the length of the table, i.e. the number of elements. */
     readonly length: number;
+
+    /** Accessor function ÔÇö gets the element stored at a given index. */
     get(index: number): Function | null;
+
+    /** Increases the size of the `Table` instance by a specified number of elements. */
     grow(delta: number): number;
+
+    /** Sets an element stored at a given index to a given value. */
     set(index: number, value: Function | null): void;
   }
 
+  /** The `GlobalDescriptor` describes the options you can pass to `new WebAssembly.Global()`. */
   export interface GlobalDescriptor {
     mutable?: boolean;
     value: ValueType;
   }
 
+  /** The `MemoryDescriptor` describes the options you can pass to `new WebAssembly.Memory()`. */
   export interface MemoryDescriptor {
     initial: number;
     maximum?: number;
   }
 
+  /** A `ModuleExportDescriptor` is the description of a declared export in a `WebAssembly.Module`. */
   export interface ModuleExportDescriptor {
     kind: ImportExportKind;
     name: string;
   }
 
+  /** A `ModuleImportDescriptor` is the description of a declared import in a `WebAssembly.Module`. */
   export interface ModuleImportDescriptor {
     kind: ImportExportKind;
     module: string;
     name: string;
   }
 
+  /** The `TableDescriptor` describes the options you can pass to `new WebAssembly.Table()`. */
   export interface TableDescriptor {
     element: TableKind;
     initial: number;
     maximum?: number;
   }
 
+  /** The value returned from `WebAssembly.instantiate` and `WebAssembly.instantiateStreaming`. */
   export interface WebAssemblyInstantiatedSource {
+    /* A `WebAssembly.Instance` object that contains all the exported WebAssembly functions. */
     instance: Instance;
+
+    /**
+     * A `WebAssembly.Module` object representing the compiled WebAssembly module.
+     * This `Module` can be instantiated again, or shared via postMessage().
+     */
     module: Module;
   }
 
@@ -3140,22 +3476,79 @@ declare namespace WebAssembly {
   export type ImportValue = ExportValue | number;
   export type ModuleImports = Record<string, ImportValue>;
   export type Imports = Record<string, ModuleImports>;
+
+  /**
+   * The `WebAssembly.compile()` function compiles WebAssembly binary code into a
+   * `WebAssembly.Module` object. This function is useful if it is necessary to compile
+   * a module before it can be instantiated (otherwise, the `WebAssembly.instantiate()`
+   * function should be used).
+   *
+   * [MDN](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/compile)
+   */
   export function compile(bytes: BufferSource): Promise<Module>;
+
+  /**
+   * The `WebAssembly.compileStreaming()` function compiles a `WebAssembly.Module`
+   * directly from a streamed underlying source.  This function is useful if it
+   * is necessary to a compile a module before it can be instantiated (otherwise,
+   * the `WebAssembly.instantiateStreaming()` function should be used).
+   *
+   * [MDN](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/compileStreaming)
+   */
   export function compileStreaming(
     source: Response | Promise<Response>,
   ): Promise<Module>;
+
+  /**
+   * The WebAssembly.instantiate() function allows you to compile and instantiate
+   * WebAssembly code.
+   *
+   * This overload takes the WebAssembly binary code, in the form of a typed
+   * array or ArrayBuffer, and performs both compilation and instantiation in one step.
+   * The returned Promise resolves to both a compiled WebAssembly.Module and its first
+   * WebAssembly.Instance.
+   *
+   * [MDN](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiate)
+   */
   export function instantiate(
     bytes: BufferSource,
     importObject?: Imports,
   ): Promise<WebAssemblyInstantiatedSource>;
+
+  /**
+   * The WebAssembly.instantiate() function allows you to compile and instantiate
+   * WebAssembly code.
+   *
+   * This overload takes an already-compiled WebAssembly.Module and returns
+   * a Promise that resolves to an Instance of that Module. This overload is useful
+   * if the Module has already been compiled.
+   *
+   * [MDN](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiate)
+   */
   export function instantiate(
     moduleObject: Module,
     importObject?: Imports,
   ): Promise<Instance>;
+
+  /**
+   * The `WebAssembly.instantiateStreaming()` function compiles and instantiates a
+   * WebAssembly module directly from a streamed underlying source. This is the most
+   * efficient, optimized way to load WebAssembly code.
+   *
+   * [MDN](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiateStreaming)
+   */
   export function instantiateStreaming(
     response: Response | PromiseLike<Response>,
     importObject?: Imports,
   ): Promise<WebAssemblyInstantiatedSource>;
+
+  /**
+   * The `WebAssembly.validate()` function validates a given typed array of
+   * WebAssembly binary code, returning whether the bytes form a valid wasm
+   * module (`true`) or not (`false`).
+   *
+   * [MDN](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/validate)
+   */
   export function validate(bytes: BufferSource): boolean;
 }
 
@@ -3190,7 +3583,7 @@ declare function setInterval(
 /** Cancels a timed, repeating action which was previously started by a call
  * to `setInterval()`
  *
- *     const id = setInterval(()= > {console.log('hello');}, 500);
+ *     const id = setInterval(() => {console.log('hello');}, 500);
  *     ...
  *     clearInterval(id);
  */
@@ -3198,7 +3591,7 @@ declare function clearInterval(id?: number): void;
 
 /** Cancels a scheduled action initiated by `setTimeout()`
  *
- *     const id = setTimeout(()= > {console.log('hello');}, 500);
+ *     const id = setTimeout(() => {console.log('hello');}, 500);
  *     ...
  *     clearTimeout(id);
  */
@@ -3265,8 +3658,6 @@ interface DOMStringList {
 }
 
 type BufferSource = ArrayBufferView | ArrayBuffer;
-
-declare const isConsoleInstance: unique symbol;
 
 declare interface Console {
   assert(condition?: boolean, ...data: any[]): void;
@@ -3460,7 +3851,7 @@ declare class URLSearchParams {
   toString(): string;
 }
 
-/** The URL interface represents an object providing static methods used for creating object URLs. */
+/** The URL┬áinterface represents an object providing static methods used for creating object URLs. */
 declare class URL {
   constructor(url: string, base?: string | URL);
   createObjectURL(object: any): string;
@@ -3482,15 +3873,20 @@ declare class URL {
   toJSON(): string;
 }
 
-interface MessageEventInit extends EventInit {
-  data?: any;
+interface MessageEventInit<T = any> extends EventInit {
+  data?: T;
   origin?: string;
   lastEventId?: string;
 }
 
-declare class MessageEvent extends Event {
-  readonly data: any;
-  readonly origin: string;
+declare class MessageEvent<T = any> extends Event {
+  /**
+   * Returns the data of the message.
+   */
+  readonly data: T;
+  /**
+   * Returns the last event ID string, for server-sent events.
+   */
   readonly lastEventId: string;
   constructor(type: string, eventInitDict?: MessageEventInit);
 }
@@ -3516,10 +3912,95 @@ interface PostMessageOptions {
   transfer?: any[];
 }
 
-interface ProgressEventInit extends EventInit {
-  lengthComputable?: boolean;
-  loaded?: number;
-  total?: number;
+interface AbstractWorkerEventMap {
+  "error": ErrorEvent;
+}
+
+interface WorkerEventMap extends AbstractWorkerEventMap {
+  "message": MessageEvent;
+  "messageerror": MessageEvent;
+}
+
+interface WorkerOptions {
+  type?: "classic" | "module";
+  name?: string;
+  /** UNSTABLE: New API.
+   *
+   * Set deno.namespace to `true` to make `Deno` namespace and all of its methods
+   * available to worker thread. The namespace is disabled by default.
+   *
+   * Configure deno.permissions options to change the level of access the worker will
+   * have. By default it will inherit the permissions of its parent thread. The permissions
+   * of a worker can't be extended beyond its parent's permissions reach.
+   * - "inherit" will take the permissions of the thread the worker is created in
+   * - You can disable/enable permissions all together by passing a boolean
+   * - You can provide a list of routes relative to the file the worker
+   *   is created in to limit the access of the worker (read/write permissions only)
+   *
+   * Example:
+   *
+   * ```ts
+   * // mod.ts
+   * const worker = new Worker(
+   *   new URL("deno_worker.ts", import.meta.url).href, {
+   *     type: "module",
+   *     deno: {
+   *       namespace: true,
+   *       permissions: {
+   *         read: true,
+   *       },
+   *     },
+   *   }
+   * );
+   * worker.postMessage({ cmd: "readFile", fileName: "./log.txt" });
+   *
+   * // deno_worker.ts
+   *
+   *
+   * self.onmessage = async function (e) {
+   *     const { cmd, fileName } = e.data;
+   *     if (cmd !== "readFile") {
+   *         throw new Error("Invalid command");
+   *     }
+   *     const buf = await Deno.readFile(fileName);
+   *     const fileContents = new TextDecoder().decode(buf);
+   *     console.log(fileContents);
+   * }
+   * ```
+   *
+   * // log.txt
+   * hello world
+   * hello world 2
+   *
+   * // run program
+   * $ deno run --allow-read mod.ts
+   * hello world
+   * hello world2
+   *
+   */
+  // TODO(Soremwar)
+  // `deno: true` is kept for backwards compatibility with the previous worker
+  // options implementation. Remove for 2.0.
+  deno?: true | {
+    namespace?: boolean;
+    /** Set to `"none"` to disable all the permissions in the worker. */
+    permissions?: "inherit" | "none" | {
+      env?: "inherit" | boolean;
+      hrtime?: "inherit" | boolean;
+      /** The format of the net access list must be `hostname[:port]`
+       * in order to be resolved.
+       *
+       * ```
+       * net: ["https://deno.land", "localhost:8080"],
+       * ```
+       * */
+      net?: "inherit" | boolean | string[];
+      plugin?: "inherit" | boolean;
+      read?: "inherit" | boolean | Array<string | URL>;
+      run?: "inherit" | boolean;
+      write?: "inherit" | boolean | Array<string | URL>;
+    };
+  };
 }
 
 declare class Worker extends EventTarget {
@@ -3528,59 +4009,30 @@ declare class Worker extends EventTarget {
   onmessageerror?: (e: MessageEvent) => void;
   constructor(
     specifier: string,
-    options?: {
-      type?: "classic" | "module";
-      name?: string;
-      /** UNSTABLE: New API. Expect many changes; most likely this
-       * field will be made into an object for more granular
-       * configuration of worker thread (permissions, import map, etc.).
-       *
-       * Set to `true` to make `Deno` namespace and all of its methods
-       * available to worker thread.
-       *
-       * Currently worker inherits permissions from main thread (permissions
-       * given using `--allow-*` flags).
-       * Configurable permissions are on the roadmap to be implemented.
-       *
-       * Example:
-       *
-       * ```ts
-       * // mod.ts
-       * const worker = new Worker(
-       *   new URL("deno_worker.ts", import.meta.url).href,
-       *   { type: "module", deno: true }
-       * );
-       * worker.postMessage({ cmd: "readFile", fileName: "./log.txt" });
-       *
-       * // deno_worker.ts
-       *
-       *
-       * self.onmessage = async function (e) {
-       *     const { cmd, fileName } = e.data;
-       *     if (cmd !== "readFile") {
-       *         throw new Error("Invalid command");
-       *     }
-       *     const buf = await Deno.readFile(fileName);
-       *     const fileContents = new TextDecoder().decode(buf);
-       *     console.log(fileContents);
-       * }
-       * ```
-       *
-       * // log.txt
-       * hello world
-       * hello world 2
-       *
-       * // run program
-       * $ deno run --allow-read mod.ts
-       * hello world
-       * hello world2
-       *
-       */
-      deno?: boolean;
-    },
+    options?: WorkerOptions,
   );
   postMessage(message: any, transfer: ArrayBuffer[]): void;
   postMessage(message: any, options?: PostMessageOptions): void;
+  addEventListener<K extends keyof WorkerEventMap>(
+    type: K,
+    listener: (this: Worker, ev: WorkerEventMap[K]) => any,
+    options?: boolean | AddEventListenerOptions,
+  ): void;
+  addEventListener(
+    type: string,
+    listener: EventListenerOrEventListenerObject,
+    options?: boolean | AddEventListenerOptions,
+  ): void;
+  removeEventListener<K extends keyof WorkerEventMap>(
+    type: K,
+    listener: (this: Worker, ev: WorkerEventMap[K]) => any,
+    options?: boolean | EventListenerOptions,
+  ): void;
+  removeEventListener(
+    type: string,
+    listener: EventListenerOrEventListenerObject,
+    options?: boolean | EventListenerOptions,
+  ): void;
   terminate(): void;
 }
 
@@ -3628,7 +4080,7 @@ declare class Performance {
   now(): number;
 }
 
-declare const performance: Performance;
+declare var performance: Performance;
 
 declare interface PerformanceMarkOptions {
   /** Metadata to be included in the mark. */
@@ -3665,7 +4117,7 @@ declare class PerformanceEntry {
   toJSON(): any;
 }
 
-/** `PerformanceMark` is an abstract interface for `PerformanceEntry` objects
+/** `PerformanceMark`┬áis an abstract interface for `PerformanceEntry` objects
  * with an entryType of `"mark"`. Entries of this type are created by calling
  * `performance.mark()` to add a named `DOMHighResTimeStamp` (the mark) to the
  * performance timeline. */
@@ -3682,17 +4134,6 @@ declare class PerformanceMark extends PerformanceEntry {
 declare class PerformanceMeasure extends PerformanceEntry {
   readonly detail: any;
   readonly entryType: "measure";
-}
-
-/** Events measuring progress of an underlying process, like an HTTP request
- * (for an XMLHttpRequest, or the loading of the underlying resource of an
- * <img>, <audio>, <video>, <style> or <link>). */
-declare class ProgressEvent<T extends EventTarget = EventTarget> extends Event {
-  constructor(type: string, eventInitDict?: ProgressEventInit);
-  readonly lengthComputable: boolean;
-  readonly loaded: number;
-  readonly target: T | null;
-  readonly total: number;
 }
 
 declare interface CustomEventInit<T = any> extends EventInit {
@@ -3714,134 +4155,1476 @@ interface ErrorConstructor {
   // internally in a way that makes it unavailable for users.
 }
 
-interface CloseEventInit extends EventInit {
-  code?: number;
-  reason?: string;
-  wasClean?: boolean;
-}
-
-declare class CloseEvent extends Event {
-  constructor(type: string, eventInitDict?: CloseEventInit);
-  /**
-   * Returns the WebSocket connection close code provided by the server.
-   */
-  readonly code: number;
-  /**
-   * Returns the WebSocket connection close reason provided by the server.
-   */
-  readonly reason: string;
-  /**
-   * Returns true if the connection closed cleanly; false otherwise.
-   */
-  readonly wasClean: boolean;
-}
-
-interface WebSocketEventMap {
-  close: CloseEvent;
-  error: Event;
-  message: MessageEvent;
-  open: Event;
-}
-
-/** Provides the API for creating and managing a WebSocket connection to a server, as well as for sending and receiving data on the connection. */
-declare class WebSocket extends EventTarget {
-  constructor(url: string, protocols?: string | string[]);
-
-  static readonly CLOSED: number;
-  static readonly CLOSING: number;
-  static readonly CONNECTING: number;
-  static readonly OPEN: number;
-
-  /**
-   * Returns a string that indicates how binary data from the WebSocket object is exposed to scripts:
-   *
-   * Can be set, to change how binary data is returned. The default is "blob".
-   */
-  binaryType: BinaryType;
-  /**
-   * Returns the number of bytes of application data (UTF-8 text and binary data) that have been queued using send() but not yet been transmitted to the network.
-   *
-   * If the WebSocket connection is closed, this attribute's value will only increase with each call to the send() method. (The number does not reset to zero once the connection closes.)
-   */
-  readonly bufferedAmount: number;
-  /**
-   * Returns the extensions selected by the server, if any.
-   */
-  readonly extensions: string;
-  onclose: ((this: WebSocket, ev: CloseEvent) => any) | null;
-  onerror: ((this: WebSocket, ev: Event | ErrorEvent) => any) | null;
-  onmessage: ((this: WebSocket, ev: MessageEvent) => any) | null;
-  onopen: ((this: WebSocket, ev: Event) => any) | null;
-  /**
-   * Returns the subprotocol selected by the server, if any. It can be used in conjunction with the array form of the constructor's second argument to perform subprotocol negotiation.
-   */
-  readonly protocol: string;
-  /**
-   * Returns the state of the WebSocket object's connection. It can have the values described below.
-   */
-  readonly readyState: number;
-  /**
-   * Returns the URL that was used to establish the WebSocket connection.
-   */
-  readonly url: string;
-  /**
-   * Closes the WebSocket connection, optionally using code as the the WebSocket connection close code and reason as the the WebSocket connection close reason.
-   */
-  close(code?: number, reason?: string): void;
-  /**
-   * Transmits data using the WebSocket connection. data can be a string, a Blob, an ArrayBuffer, or an ArrayBufferView.
-   */
-  send(data: string | ArrayBufferLike | Blob | ArrayBufferView): void;
-  readonly CLOSED: number;
-  readonly CLOSING: number;
-  readonly CONNECTING: number;
-  readonly OPEN: number;
-  addEventListener<K extends keyof WebSocketEventMap>(
-    type: K,
-    listener: (this: WebSocket, ev: WebSocketEventMap[K]) => any,
-    options?: boolean | AddEventListenerOptions,
-  ): void;
-  addEventListener(
-    type: string,
-    listener: EventListenerOrEventListenerObject,
-    options?: boolean | AddEventListenerOptions,
-  ): void;
-  removeEventListener<K extends keyof WebSocketEventMap>(
-    type: K,
-    listener: (this: WebSocket, ev: WebSocketEventMap[K]) => any,
-    options?: boolean | EventListenerOptions,
-  ): void;
-  removeEventListener(
-    type: string,
-    listener: EventListenerOrEventListenerObject,
-    options?: boolean | EventListenerOptions,
-  ): void;
-}
-
-type BinaryType = "arraybuffer" | "blob";
-
-// Copyright 2018-2020 the Deno authors. All rights reserved. MIT license.
-
-/* eslint-disable @typescript-eslint/no-explicit-any */
+// Copyright 2018-2021 the Deno authors. All rights reserved. MIT license.
 
 /// <reference no-default-lib="true" />
 /// <reference lib="deno.ns" />
 /// <reference lib="deno.shared_globals" />
 /// <reference lib="esnext" />
 
-declare interface Window extends EventTarget {
+declare class Window extends EventTarget {
+  new(): Window;
   readonly window: Window & typeof globalThis;
   readonly self: Window & typeof globalThis;
   onload: ((this: Window, ev: Event) => any) | null;
   onunload: ((this: Window, ev: Event) => any) | null;
   close: () => void;
   readonly closed: boolean;
+  alert: (message?: string) => void;
+  confirm: (message?: string) => boolean;
+  prompt: (message?: string, defaultValue?: string) => string | null;
   Deno: typeof Deno;
 }
 
-declare const window: Window & typeof globalThis;
-declare const self: Window & typeof globalThis;
-declare const onload: ((this: Window, ev: Event) => any) | null;
-declare const onunload: ((this: Window, ev: Event) => any) | null;
+declare var window: Window & typeof globalThis;
+declare var self: Window & typeof globalThis;
+declare var onload: ((this: Window, ev: Event) => any) | null;
+declare var onunload: ((this: Window, ev: Event) => any) | null;
 
-/* eslint-enable @typescript-eslint/no-explicit-any */
+/**
+ * Shows the given message and waits for the enter key pressed.
+ * If the stdin is not interactive, it does nothing.
+ * @param message
+ */
+declare function alert(message?: string): void;
+
+/**
+ * Shows the given message and waits for the answer. Returns the user's answer as boolean.
+ * Only `y` and `Y` are considered as true.
+ * If the stdin is not interactive, it returns false.
+ * @param message
+ */
+declare function confirm(message?: string): boolean;
+
+/**
+ * Shows the given message and waits for the user's input. Returns the user's input as string.
+ * If the default value is given and the user inputs the empty string, then it returns the given
+ * default value.
+ * If the default value is not given and the user inputs the empty string, it returns null.
+ * If the stdin is not interactive, it returns null.
+ * @param message
+ * @param defaultValue
+ */
+declare function prompt(message?: string, defaultValue?: string): string | null;
+
+// TODO(nayeemrmn): Move this to `op_crates/web` where its implementation is.
+// The types there must first be split into window, worker and global types.
+/** The location (URL) of the object it is linked to. Changes done on it are
+ * reflected on the object it relates to. Accessible via
+ * `globalThis.location`. */
+declare class Location {
+  constructor();
+  /** Returns a DOMStringList object listing the origins of the ancestor
+   * browsing contexts, from the parent browsing context to the top-level
+   * browsing context.
+   *
+   * Always empty in Deno. */
+  readonly ancestorOrigins: DOMStringList;
+  /** Returns the Location object's URL's fragment (includes leading "#" if
+   * non-empty).
+   *
+   * Cannot be set in Deno. */
+  hash: string;
+  /** Returns the Location object's URL's host and port (if different from the
+   * default port for the scheme).
+   *
+   * Cannot be set in Deno. */
+  host: string;
+  /** Returns the Location object's URL's host.
+   *
+   * Cannot be set in Deno. */
+  hostname: string;
+  /** Returns the Location object's URL.
+   *
+   * Cannot be set in Deno. */
+  href: string;
+  toString(): string;
+  /** Returns the Location object's URL's origin. */
+  readonly origin: string;
+  /** Returns the Location object's URL's path.
+   *
+   * Cannot be set in Deno. */
+  pathname: string;
+  /** Returns the Location object's URL's port.
+   *
+   * Cannot be set in Deno. */
+  port: string;
+  /** Returns the Location object's URL's scheme.
+   *
+   * Cannot be set in Deno. */
+  protocol: string;
+  /** Returns the Location object's URL's query (includes leading "?" if
+   * non-empty).
+   *
+   * Cannot be set in Deno. */
+  search: string;
+  /** Navigates to the given URL.
+   *
+   * Cannot be set in Deno. */
+  assign(url: string): void;
+  /** Reloads the current page.
+   *
+   * Disabled in Deno. */
+  reload(): void;
+  /** @deprecated */
+  reload(forcedReload: boolean): void;
+  /** Removes the current page from the session history and navigates to the
+   * given URL.
+   *
+   * Disabled in Deno. */
+  replace(url: string): void;
+}
+
+// TODO(nayeemrmn): Move this to `op_crates/web` where its implementation is.
+// The types there must first be split into window, worker and global types.
+declare var location: Location;
+
+// Copyright 2018-2021 the Deno authors. All rights reserved. MIT license.
+
+/// <reference no-default-lib="true" />
+/// <reference lib="deno.ns" />
+
+declare namespace Deno {
+  /**
+   * **UNSTABLE**: New API, yet to be vetted.  This API is under consideration to
+   * determine if permissions are required to call it.
+   *
+   * Retrieve the process umask.  If `mask` is provided, sets the process umask.
+   * This call always returns what the umask was before the call.
+   *
+   * ```ts
+   * console.log(Deno.umask());  // e.g. 18 (0o022)
+   * const prevUmaskValue = Deno.umask(0o077);  // e.g. 18 (0o022)
+   * console.log(Deno.umask());  // e.g. 63 (0o077)
+   * ```
+   *
+   * NOTE:  This API is not implemented on Windows
+   */
+  export function umask(mask?: number): number;
+
+  /** **UNSTABLE**: This API needs a security review.
+   *
+   * Synchronously creates `newpath` as a hard link to `oldpath`.
+   *
+   * ```ts
+   * Deno.linkSync("old/name", "new/name");
+   * ```
+   *
+   * Requires `allow-read` and `allow-write` permissions. */
+  export function linkSync(oldpath: string, newpath: string): void;
+
+  /** **UNSTABLE**: This API needs a security review.
+   *
+   * Creates `newpath` as a hard link to `oldpath`.
+   *
+   * ```ts
+   * await Deno.link("old/name", "new/name");
+   * ```
+   *
+   * Requires `allow-read` and `allow-write` permissions. */
+  export function link(oldpath: string, newpath: string): Promise<void>;
+
+  /** **UNSTABLE**: New API, yet to be vetted.
+   *
+   * Gets the size of the console as columns/rows.
+   *
+   * ```ts
+   * const { columns, rows } = Deno.consoleSize(Deno.stdout.rid);
+   * ```
+   */
+  export function consoleSize(
+    rid: number,
+  ): {
+    columns: number;
+    rows: number;
+  };
+
+  export type SymlinkOptions = {
+    type: "file" | "dir";
+  };
+
+  /** **UNSTABLE**: This API needs a security review.
+   *
+   * Creates `newpath` as a symbolic link to `oldpath`.
+   *
+   * The options.type parameter can be set to `file` or `dir`. This argument is only
+   * available on Windows and ignored on other platforms.
+   *
+   * ```ts
+   * Deno.symlinkSync("old/name", "new/name");
+   * ```
+   *
+   * Requires `allow-write` permission. */
+  export function symlinkSync(
+    oldpath: string,
+    newpath: string,
+    options?: SymlinkOptions,
+  ): void;
+
+  /** **UNSTABLE**: This API needs a security review.
+   *
+   * Creates `newpath` as a symbolic link to `oldpath`.
+   *
+   * The options.type parameter can be set to `file` or `dir`. This argument is only
+   * available on Windows and ignored on other platforms.
+   *
+   * ```ts
+   * await Deno.symlink("old/name", "new/name");
+   * ```
+   *
+   * Requires `allow-write` permission. */
+  export function symlink(
+    oldpath: string,
+    newpath: string,
+    options?: SymlinkOptions,
+  ): Promise<void>;
+
+  /** **Unstable**  There are questions around which permission this needs. And
+   * maybe should be renamed (loadAverage?)
+   *
+   * Returns an array containing the 1, 5, and 15 minute load averages. The
+   * load average is a measure of CPU and IO utilization of the last one, five,
+   * and 15 minute periods expressed as a fractional number.  Zero means there
+   * is no load. On Windows, the three values are always the same and represent
+   * the current load, not the 1, 5 and 15 minute load averages.
+   *
+   * ```ts
+   * console.log(Deno.loadavg());  // e.g. [ 0.71, 0.44, 0.44 ]
+   * ```
+   *
+   * Requires `allow-env` permission.
+   */
+  export function loadavg(): number[];
+
+  /** **Unstable** new API. yet to be vetted. Under consideration to possibly move to
+   * Deno.build or Deno.versions and if it should depend sys-info, which may not
+   * be desireable.
+   *
+   * Returns the release version of the Operating System.
+   *
+   * ```ts
+   * console.log(Deno.osRelease());
+   * ```
+   *
+   * Requires `allow-env` permission.
+   *
+   */
+  export function osRelease(): string;
+
+  /** **Unstable** new API. yet to be vetted.
+   *
+   * Displays the total amount of free and used physical and swap memory in the
+   * system, as well as the buffers and caches used by the kernel.
+   *
+   * This is similar to the `free` command in Linux
+   *
+   * ```ts
+   * console.log(Deno.systemMemoryInfo());
+   * ```
+   *
+   * Requires `allow-env` permission.
+   *
+   */
+  export function systemMemoryInfo(): SystemMemoryInfo;
+
+  export interface SystemMemoryInfo {
+    /** Total installed memory */
+    total: number;
+    /** Unused memory */
+    free: number;
+    /** Estimation of how much memory is available  for  starting  new
+     * applications, without  swapping. Unlike the data provided by the cache or
+     * free fields, this field takes into account page cache and also that not
+     * all reclaimable memory slabs will be reclaimed due to items being in use
+     */
+    available: number;
+    /** Memory used by kernel buffers */
+    buffers: number;
+    /** Memory  used  by  the  page  cache  and  slabs */
+    cached: number;
+    /** Total swap memory */
+    swapTotal: number;
+    /** Unused swap memory */
+    swapFree: number;
+  }
+
+  /** **Unstable** new API. yet to be vetted.
+   *
+   * Returns the total number of logical cpus in the system along with
+   * the speed measured in MHz. If either the syscall to get the core
+   * count or speed of the cpu is unsuccessful the value of the it
+   * is undefined.
+   *
+   * ```ts
+   * console.log(Deno.systemCpuInfo());
+   * ```
+   *
+   * Requires `allow-env` permission.
+   *
+   */
+  export function systemCpuInfo(): SystemCpuInfo;
+
+  export interface SystemCpuInfo {
+    /** Total number of logical cpus in the system */
+    cores: number | undefined;
+    /** The speed of the cpu measured in MHz */
+    speed: number | undefined;
+  }
+
+  /** **UNSTABLE**: new API, yet to be vetted.
+   *
+   * Open and initialize a plugin.
+   *
+   * ```ts
+   * const rid = Deno.openPlugin("./path/to/some/plugin.so");
+   * const opId = Deno.core.ops()["some_op"];
+   * const response = Deno.core.dispatch(opId, new Uint8Array([1,2,3,4]));
+   * console.log(`Response from plugin ${response}`);
+   * ```
+   *
+   * Requires `allow-plugin` permission.
+   *
+   * The plugin system is not stable and will change in the future, hence the
+   * lack of docs. For now take a look at the example
+   * https://github.com/denoland/deno/tree/master/test_plugin
+   */
+  export function openPlugin(filename: string): number;
+
+  /** The log category for a diagnostic message. */
+  export enum DiagnosticCategory {
+    Warning = 0,
+    Error = 1,
+    Suggestion = 2,
+    Message = 3,
+  }
+
+  export interface DiagnosticMessageChain {
+    message: string;
+    category: DiagnosticCategory;
+    code: number;
+    next?: DiagnosticMessageChain[];
+  }
+
+  export interface Diagnostic {
+    /** A string message summarizing the diagnostic. */
+    messageText?: string;
+    /** An ordered array of further diagnostics. */
+    messageChain?: DiagnosticMessageChain;
+    /** Information related to the diagnostic. This is present when there is a
+     * suggestion or other additional diagnostic information */
+    relatedInformation?: Diagnostic[];
+    /** The text of the source line related to the diagnostic. */
+    sourceLine?: string;
+    source?: string;
+    /** The start position of the error. Zero based index. */
+    start?: {
+      line: number;
+      character: number;
+    };
+    /** The end position of the error.  Zero based index. */
+    end?: {
+      line: number;
+      character: number;
+    };
+    /** The filename of the resource related to the diagnostic message. */
+    fileName?: string;
+    /** The category of the diagnostic. */
+    category: DiagnosticCategory;
+    /** A number identifier. */
+    code: number;
+  }
+
+  /** **UNSTABLE**: new API, yet to be vetted.
+   *
+   * Format an array of diagnostic items and return them as a single string in a
+   * user friendly format.
+   *
+   * ```ts
+   * const [diagnostics, result] = Deno.compile("file_with_compile_issues.ts");
+   * console.table(diagnostics);  // Prints raw diagnostic data
+   * console.log(Deno.formatDiagnostics(diagnostics));  // User friendly output of diagnostics
+   * ```
+   *
+   * @param diagnostics An array of diagnostic items to format
+   */
+  export function formatDiagnostics(diagnostics: Diagnostic[]): string;
+
+  /** **UNSTABLE**: new API, yet to be vetted.
+   *
+   * A specific subset TypeScript compiler options that can be supported by the
+   * Deno TypeScript compiler. */
+  export interface CompilerOptions {
+    /** Allow JavaScript files to be compiled. Defaults to `true`. */
+    allowJs?: boolean;
+    /** Allow default imports from modules with no default export. This does not
+     * affect code emit, just typechecking. Defaults to `false`. */
+    allowSyntheticDefaultImports?: boolean;
+    /** Allow accessing UMD globals from modules. Defaults to `false`. */
+    allowUmdGlobalAccess?: boolean;
+    /** Do not report errors on unreachable code. Defaults to `false`. */
+    allowUnreachableCode?: boolean;
+    /** Do not report errors on unused labels. Defaults to `false` */
+    allowUnusedLabels?: boolean;
+    /** Parse in strict mode and emit `"use strict"` for each source file.
+     * Defaults to `true`. */
+    alwaysStrict?: boolean;
+    /** Base directory to resolve non-relative module names. Defaults to
+     * `undefined`. */
+    baseUrl?: string;
+    /** The character set of the input files. Defaults to `"utf8"`. */
+    charset?: string;
+    /** Report errors in `.js` files. Use in conjunction with `allowJs`. Defaults
+     * to `false`. */
+    checkJs?: boolean;
+    /** Generates corresponding `.d.ts` file. Defaults to `false`. */
+    declaration?: boolean;
+    /** Output directory for generated declaration files. */
+    declarationDir?: string;
+    /** Generates a source map for each corresponding `.d.ts` file. Defaults to
+     * `false`. */
+    declarationMap?: boolean;
+    /** Provide full support for iterables in `for..of`, spread and
+     * destructuring when targeting ES5 or ES3. Defaults to `false`. */
+    downlevelIteration?: boolean;
+    /** Only emit `.d.ts` declaration files. Defaults to `false`. */
+    emitDeclarationOnly?: boolean;
+    /** Emit design-type metadata for decorated declarations in source. See issue
+     * [microsoft/TypeScript#2577](https://github.com/Microsoft/TypeScript/issues/2577)
+     * for details. Defaults to `false`. */
+    emitDecoratorMetadata?: boolean;
+    /** Emit `__importStar` and `__importDefault` helpers for runtime babel
+     * ecosystem compatibility and enable `allowSyntheticDefaultImports` for type
+     * system compatibility. Defaults to `true`. */
+    esModuleInterop?: boolean;
+    /** Enables experimental support for ES decorators. Defaults to `true`. */
+    experimentalDecorators?: boolean;
+    /** Import emit helpers (e.g. `__extends`, `__rest`, etc..) from
+     * [tslib](https://www.npmjs.com/package/tslib). */
+    importHelpers?: boolean;
+    /** This flag controls how `import` works, there are 3 different options:
+     *
+     * - `remove`: The default behavior of dropping import statements which only
+     *   reference types.
+     * - `preserve`: Preserves all `import` statements whose values or types are
+     *   never used. This can cause imports/side-effects to be preserved.
+     * - `error`: This preserves all imports (the same as the preserve option),
+     *   but will error when a value import is only used as a type. This might
+     *   be useful if you want to ensure no values are being accidentally
+     *   imported, but still make side-effect imports explicit.
+     *
+     * This flag works because you can use `import type` to explicitly create an
+     * `import` statement which should never be emitted into JavaScript. */
+    importsNotUsedAsValues?: "remove" | "preserve" | "error";
+    /** Emit a single file with source maps instead of having a separate file.
+     * Defaults to `false`. */
+    inlineSourceMap?: boolean;
+    /** Emit the source alongside the source maps within a single file; requires
+     * `inlineSourceMap` or `sourceMap` to be set. Defaults to `false`. */
+    inlineSources?: boolean;
+    /** Support JSX in `.tsx` files: `"react"`, `"preserve"`, `"react-native"`.
+     * Defaults to `"react"`. */
+    jsx?: "react" | "preserve" | "react-native";
+    /** Specify the JSX factory function to use when targeting react JSX emit,
+     * e.g. `React.createElement` or `h`. Defaults to `React.createElement`. */
+    jsxFactory?: string;
+    /** Specify the JSX fragment factory function to use when targeting react
+     * JSX emit, e.g. `Fragment`. Defaults to `React.Fragment`. */
+    jsxFragmentFactory?: string;
+    /** Resolve keyof to string valued property names only (no numbers or
+     * symbols). Defaults to `false`. */
+    keyofStringsOnly?: string;
+    /** List of library files to be included in the compilation. If omitted,
+     * then the Deno main runtime libs are used. */
+    lib?: string[];
+    /** The locale to use to show error messages. */
+    locale?: string;
+    /** Specifies the location where debugger should locate map files instead of
+     * generated locations. Use this flag if the `.map` files will be located at
+     * run-time in a different location than the `.js` files. The location
+     * specified will be embedded in the source map to direct the debugger where
+     * the map files will be located. Defaults to `undefined`. */
+    mapRoot?: string;
+    /** Specify the module format for the emitted code. Defaults to
+     * `"esnext"`. */
+    module?:
+      | "none"
+      | "commonjs"
+      | "amd"
+      | "system"
+      | "umd"
+      | "es6"
+      | "es2015"
+      | "esnext";
+    /** Do not generate custom helper functions like `__extends` in compiled
+     * output. Defaults to `false`. */
+    noEmitHelpers?: boolean;
+    /** Report errors for fallthrough cases in switch statement. Defaults to
+     * `false`. */
+    noFallthroughCasesInSwitch?: boolean;
+    /** Raise error on expressions and declarations with an implied any type.
+     * Defaults to `true`. */
+    noImplicitAny?: boolean;
+    /** Report an error when not all code paths in function return a value.
+     * Defaults to `false`. */
+    noImplicitReturns?: boolean;
+    /** Raise error on `this` expressions with an implied `any` type. Defaults to
+     * `true`. */
+    noImplicitThis?: boolean;
+    /** Do not emit `"use strict"` directives in module output. Defaults to
+     * `false`. */
+    noImplicitUseStrict?: boolean;
+    /** Do not include the default library file (`lib.d.ts`). Defaults to
+     * `false`. */
+    noLib?: boolean;
+    /** Do not add triple-slash references or module import targets to the list of
+     * compiled files. Defaults to `false`. */
+    noResolve?: boolean;
+    /** Disable strict checking of generic signatures in function types. Defaults
+     * to `false`. */
+    noStrictGenericChecks?: boolean;
+    /** Include 'undefined' in index signature results. Defaults to `false`. */
+    noUncheckedIndexedAccess?: boolean;
+    /** Report errors on unused locals. Defaults to `false`. */
+    noUnusedLocals?: boolean;
+    /** Report errors on unused parameters. Defaults to `false`. */
+    noUnusedParameters?: boolean;
+    /** List of path mapping entries for module names to locations relative to the
+     * `baseUrl`. Defaults to `undefined`. */
+    paths?: Record<string, string[]>;
+    /** Do not erase const enum declarations in generated code. Defaults to
+     * `false`. */
+    preserveConstEnums?: boolean;
+    /** Remove all comments except copy-right header comments beginning with
+     * `/*!`. Defaults to `true`. */
+    removeComments?: boolean;
+    /** Specifies the root directory of input files. Only use to control the
+     * output directory structure with `outDir`. Defaults to `undefined`. */
+    rootDir?: string;
+    /** List of _root_ folders whose combined content represent the structure of
+     * the project at runtime. Defaults to `undefined`. */
+    rootDirs?: string[];
+    /** Generates corresponding `.map` file. Defaults to `false`. */
+    sourceMap?: boolean;
+    /** Specifies the location where debugger should locate TypeScript files
+     * instead of source locations. Use this flag if the sources will be located
+     * at run-time in a different location than that at design-time. The location
+     * specified will be embedded in the sourceMap to direct the debugger where
+     * the source files will be located. Defaults to `undefined`. */
+    sourceRoot?: string;
+    /** Skip type checking of all declaration files (`*.d.ts`). */
+    skipLibCheck?: boolean;
+    /** Enable all strict type checking options. Enabling `strict` enables
+     * `noImplicitAny`, `noImplicitThis`, `alwaysStrict`, `strictBindCallApply`,
+     * `strictNullChecks`, `strictFunctionTypes` and
+     * `strictPropertyInitialization`. Defaults to `true`. */
+    strict?: boolean;
+    /** Enable stricter checking of the `bind`, `call`, and `apply` methods on
+     * functions. Defaults to `true`. */
+    strictBindCallApply?: boolean;
+    /** Disable bivariant parameter checking for function types. Defaults to
+     * `true`. */
+    strictFunctionTypes?: boolean;
+    /** Ensure non-undefined class properties are initialized in the constructor.
+     * This option requires `strictNullChecks` be enabled in order to take effect.
+     * Defaults to `true`. */
+    strictPropertyInitialization?: boolean;
+    /** In strict null checking mode, the `null` and `undefined` values are not in
+     * the domain of every type and are only assignable to themselves and `any`
+     * (the one exception being that `undefined` is also assignable to `void`). */
+    strictNullChecks?: boolean;
+    /** Suppress excess property checks for object literals. Defaults to
+     * `false`. */
+    suppressExcessPropertyErrors?: boolean;
+    /** Suppress `noImplicitAny` errors for indexing objects lacking index
+     * signatures. */
+    suppressImplicitAnyIndexErrors?: boolean;
+    /** Specify ECMAScript target version. Defaults to `esnext`. */
+    target?:
+      | "es3"
+      | "es5"
+      | "es6"
+      | "es2015"
+      | "es2016"
+      | "es2017"
+      | "es2018"
+      | "es2019"
+      | "es2020"
+      | "esnext";
+    /** List of names of type definitions to include. Defaults to `undefined`.
+     *
+     * The type definitions are resolved according to the normal Deno resolution
+     * irrespective of if sources are provided on the call. Like other Deno
+     * modules, there is no "magical" resolution. For example:
+     *
+     * ```ts
+     * Deno.compile(
+     *   "./foo.js",
+     *   undefined,
+     *   {
+     *     types: [ "./foo.d.ts", "https://deno.land/x/example/types.d.ts" ]
+     *   }
+     * );
+     * ```
+     */
+    types?: string[];
+    /** Emit class fields with ECMAScript-standard semantics. Defaults to
+     * `false`. */
+    useDefineForClassFields?: boolean;
+  }
+
+  interface ImportMap {
+    imports: Record<string, string>;
+    scopes?: Record<string, Record<string, string>>;
+  }
+
+  interface EmitOptions {
+    /** Indicate that the source code should be emitted to a single file
+     * JavaScript bundle that is an ES module (`"esm"`). */
+    bundle?: "esm";
+    /** If `true` then the sources will be typed checked, returning any
+     * diagnostic errors in the result.  If `false` type checking will be
+     * skipped.  Defaults to `true`.
+     *
+     * *Note* by default, only TypeScript will be type checked, just like on
+     * the command line.  Use the `compilerOptions` options of `checkJs` to
+     * enable type checking of JavaScript. */
+    check?: boolean;
+    /** A set of options that are aligned to TypeScript compiler options that
+     * are supported by Deno. */
+    compilerOptions?: CompilerOptions;
+    /** An [import-map](https://deno.land/manual/linking_to_external_code/import_maps#import-maps)
+     * which will be applied to the imports. */
+    importMap?: ImportMap;
+    /** An absolute path to an [import-map](https://deno.land/manual/linking_to_external_code/import_maps#import-maps).
+     * Required to be specified if an `importMap` is specified to be able to
+     * determine resolution of relative paths. If a `importMap` is not
+     * specified, then it will assumed the file path points to an import map on
+     * disk and will be attempted to be loaded based on current runtime
+     * permissions.
+     */
+    importMapPath?: string;
+    /** A record of sources to use when doing the emit.  If provided, Deno will
+     * use these sources instead of trying to resolve the modules externally. */
+    sources?: Record<string, string>;
+  }
+
+  interface EmitResult {
+    /** Diagnostic messages returned from the type checker (`tsc`). */
+    diagnostics: Diagnostic[];
+    /** Any emitted files.  If bundled, then the JavaScript will have the
+     * key of `deno:///bundle.js` with an optional map (based on
+     * `compilerOptions`) in `deno:///bundle.js.map`. */
+    files: Record<string, string>;
+    /** An optional array of any compiler options that were ignored by Deno. */
+    ignoredOptions?: string[];
+    /** An array of internal statistics related to the emit, for diagnostic
+     * purposes. */
+    stats: Array<[string, number]>;
+  }
+
+  /**
+   * **UNSTABLE**: new API, yet to be vetted.
+   *
+   * Similar to the command line functionality of `deno run` or `deno cache`,
+   * `Deno.emit()` provides a way to provide Deno arbitrary JavaScript
+   * or TypeScript and have it return JavaScript based on the options and
+   * settings provided. The source code can either be provided or the modules
+   * can be fetched and resolved in line with the behavior of the command line.
+   *
+   * Requires `allow-read` and/or `allow-net` if sources are not provided.
+   *
+   * @param rootSpecifier The specifier that will be used as the entry point.
+   *                      If no sources are provided, then the specifier would
+   *                      be the same as if you typed it on the command line for
+   *                      `deno run`. If sources are provided, it should match
+   *                      one of the names of the sources.
+   * @param options  A set of options to be used with the emit.
+   */
+  export function emit(
+    rootSpecifier: string | URL,
+    options?: EmitOptions,
+  ): Promise<EmitResult>;
+
+  /** **UNSTABLE**: Should not have same name as `window.location` type. */
+  interface Location {
+    /** The full url for the module, e.g. `file://some/file.ts` or
+     * `https://some/file.ts`. */
+    fileName: string;
+    /** The line number in the file. It is assumed to be 1-indexed. */
+    lineNumber: number;
+    /** The column number in the file. It is assumed to be 1-indexed. */
+    columnNumber: number;
+  }
+
+  /** **UNSTABLE**: new API, yet to be vetted.
+   *
+   * Given a current location in a module, lookup the source location and return
+   * it.
+   *
+   * When Deno transpiles code, it keep source maps of the transpiled code. This
+   * function can be used to lookup the original location. This is
+   * automatically done when accessing the `.stack` of an error, or when an
+   * uncaught error is logged. This function can be used to perform the lookup
+   * for creating better error handling.
+   *
+   * **Note:** `line` and `column` are 1 indexed, which matches display
+   * expectations, but is not typical of most index numbers in Deno.
+   *
+   * An example:
+   *
+   * ```ts
+   * const orig = Deno.applySourceMap({
+   *   fileName: "file://my/module.ts",
+   *   lineNumber: 5,
+   *   columnNumber: 15
+   * });
+   * console.log(`${orig.filename}:${orig.line}:${orig.column}`);
+   * ```
+   */
+  export function applySourceMap(location: Location): Location;
+
+  enum LinuxSignal {
+    SIGHUP = 1,
+    SIGINT = 2,
+    SIGQUIT = 3,
+    SIGILL = 4,
+    SIGTRAP = 5,
+    SIGABRT = 6,
+    SIGBUS = 7,
+    SIGFPE = 8,
+    SIGKILL = 9,
+    SIGUSR1 = 10,
+    SIGSEGV = 11,
+    SIGUSR2 = 12,
+    SIGPIPE = 13,
+    SIGALRM = 14,
+    SIGTERM = 15,
+    SIGSTKFLT = 16,
+    SIGCHLD = 17,
+    SIGCONT = 18,
+    SIGSTOP = 19,
+    SIGTSTP = 20,
+    SIGTTIN = 21,
+    SIGTTOU = 22,
+    SIGURG = 23,
+    SIGXCPU = 24,
+    SIGXFSZ = 25,
+    SIGVTALRM = 26,
+    SIGPROF = 27,
+    SIGWINCH = 28,
+    SIGIO = 29,
+    SIGPWR = 30,
+    SIGSYS = 31,
+  }
+  enum MacOSSignal {
+    SIGHUP = 1,
+    SIGINT = 2,
+    SIGQUIT = 3,
+    SIGILL = 4,
+    SIGTRAP = 5,
+    SIGABRT = 6,
+    SIGEMT = 7,
+    SIGFPE = 8,
+    SIGKILL = 9,
+    SIGBUS = 10,
+    SIGSEGV = 11,
+    SIGSYS = 12,
+    SIGPIPE = 13,
+    SIGALRM = 14,
+    SIGTERM = 15,
+    SIGURG = 16,
+    SIGSTOP = 17,
+    SIGTSTP = 18,
+    SIGCONT = 19,
+    SIGCHLD = 20,
+    SIGTTIN = 21,
+    SIGTTOU = 22,
+    SIGIO = 23,
+    SIGXCPU = 24,
+    SIGXFSZ = 25,
+    SIGVTALRM = 26,
+    SIGPROF = 27,
+    SIGWINCH = 28,
+    SIGINFO = 29,
+    SIGUSR1 = 30,
+    SIGUSR2 = 31,
+  }
+
+  /** **UNSTABLE**: Further changes required to make platform independent.
+   *
+   * Signals numbers. This is platform dependent. */
+  export const Signal: typeof MacOSSignal | typeof LinuxSignal;
+
+  /** **UNSTABLE**: new API, yet to be vetted.
+   *
+   * Represents the stream of signals, implements both `AsyncIterator` and
+   * `PromiseLike`. */
+  export class SignalStream
+    implements AsyncIterableIterator<void>, PromiseLike<void> {
+    constructor(signal: typeof Deno.Signal);
+    then<T, S>(
+      f: (v: void) => T | Promise<T>,
+      g?: (v: void) => S | Promise<S>,
+    ): Promise<T | S>;
+    next(): Promise<IteratorResult<void>>;
+    [Symbol.asyncIterator](): AsyncIterableIterator<void>;
+    dispose(): void;
+  }
+
+  /** **UNSTABLE**: new API, yet to be vetted.
+   *
+   * Returns the stream of the given signal number. You can use it as an async
+   * iterator.
+   *
+   * ```ts
+   * for await (const _ of Deno.signal(Deno.Signal.SIGTERM)) {
+   *   console.log("got SIGTERM!");
+   * }
+   * ```
+   *
+   * You can also use it as a promise. In this case you can only receive the
+   * first one.
+   *
+   * ```ts
+   * await Deno.signal(Deno.Signal.SIGTERM);
+   * console.log("SIGTERM received!")
+   * ```
+   *
+   * If you want to stop receiving the signals, you can use `.dispose()` method
+   * of the signal stream object.
+   *
+   * ```ts
+   * const sig = Deno.signal(Deno.Signal.SIGTERM);
+   * setTimeout(() => { sig.dispose(); }, 5000);
+   * for await (const _ of sig) {
+   *   console.log("SIGTERM!")
+   * }
+   * ```
+   *
+   * The above for-await loop exits after 5 seconds when `sig.dispose()` is
+   * called.
+   *
+   * NOTE: This functionality is not yet implemented on Windows.
+   */
+  export function signal(signo: number): SignalStream;
+
+  /** **UNSTABLE**: new API, yet to be vetted. */
+  export const signals: {
+    /** Returns the stream of SIGALRM signals.
+     *
+     * This method is the shorthand for `Deno.signal(Deno.Signal.SIGALRM)`. */
+    alarm: () => SignalStream;
+    /** Returns the stream of SIGCHLD signals.
+     *
+     * This method is the shorthand for `Deno.signal(Deno.Signal.SIGCHLD)`. */
+    child: () => SignalStream;
+    /** Returns the stream of SIGHUP signals.
+     *
+     * This method is the shorthand for `Deno.signal(Deno.Signal.SIGHUP)`. */
+    hungup: () => SignalStream;
+    /** Returns the stream of SIGINT signals.
+     *
+     * This method is the shorthand for `Deno.signal(Deno.Signal.SIGINT)`. */
+    interrupt: () => SignalStream;
+    /** Returns the stream of SIGIO signals.
+     *
+     * This method is the shorthand for `Deno.signal(Deno.Signal.SIGIO)`. */
+    io: () => SignalStream;
+    /** Returns the stream of SIGPIPE signals.
+     *
+     * This method is the shorthand for `Deno.signal(Deno.Signal.SIGPIPE)`. */
+    pipe: () => SignalStream;
+    /** Returns the stream of SIGQUIT signals.
+     *
+     * This method is the shorthand for `Deno.signal(Deno.Signal.SIGQUIT)`. */
+    quit: () => SignalStream;
+    /** Returns the stream of SIGTERM signals.
+     *
+     * This method is the shorthand for `Deno.signal(Deno.Signal.SIGTERM)`. */
+    terminate: () => SignalStream;
+    /** Returns the stream of SIGUSR1 signals.
+     *
+     * This method is the shorthand for `Deno.signal(Deno.Signal.SIGUSR1)`. */
+    userDefined1: () => SignalStream;
+    /** Returns the stream of SIGUSR2 signals.
+     *
+     * This method is the shorthand for `Deno.signal(Deno.Signal.SIGUSR2)`. */
+    userDefined2: () => SignalStream;
+    /** Returns the stream of SIGWINCH signals.
+     *
+     * This method is the shorthand for `Deno.signal(Deno.Signal.SIGWINCH)`. */
+    windowChange: () => SignalStream;
+  };
+
+  export type SetRawOptions = {
+    cbreak: boolean;
+  };
+
+  /** **UNSTABLE**: new API, yet to be vetted
+   *
+   * Set TTY to be under raw mode or not. In raw mode, characters are read and
+   * returned as is, without being processed. All special processing of
+   * characters by the terminal is disabled, including echoing input characters.
+   * Reading from a TTY device in raw mode is faster than reading from a TTY
+   * device in canonical mode.
+   *
+   * The `cbreak` option can be used to indicate that characters that correspond
+   * to a signal should still be generated. When disabling raw mode, this option
+   * is ignored. This functionality currently only works on Linux and Mac OS.
+   *
+   * ```ts
+   * Deno.setRaw(myTTY.rid, true, { cbreak: true });
+   * ```
+   */
+  export function setRaw(
+    rid: number,
+    mode: boolean,
+    options?: SetRawOptions,
+  ): void;
+
+  /** **UNSTABLE**: needs investigation into high precision time.
+   *
+   * Synchronously changes the access (`atime`) and modification (`mtime`) times
+   * of a file system object referenced by `path`. Given times are either in
+   * seconds (UNIX epoch time) or as `Date` objects.
+   *
+   * ```ts
+   * Deno.utimeSync("myfile.txt", 1556495550, new Date());
+   * ```
+   *
+   * Requires `allow-write` permission. */
+  export function utimeSync(
+    path: string,
+    atime: number | Date,
+    mtime: number | Date,
+  ): void;
+
+  /** **UNSTABLE**: needs investigation into high precision time.
+   *
+   * Changes the access (`atime`) and modification (`mtime`) times of a file
+   * system object referenced by `path`. Given times are either in seconds
+   * (UNIX epoch time) or as `Date` objects.
+   *
+   * ```ts
+   * await Deno.utime("myfile.txt", 1556495550, new Date());
+   * ```
+   *
+   * Requires `allow-write` permission. */
+  export function utime(
+    path: string,
+    atime: number | Date,
+    mtime: number | Date,
+  ): Promise<void>;
+
+  /** The type of the resource record.
+   * Only the listed types are supported currently. */
+  export type RecordType =
+    | "A"
+    | "AAAA"
+    | "ANAME"
+    | "CNAME"
+    | "MX"
+    | "PTR"
+    | "SRV"
+    | "TXT";
+
+  export interface ResolveDnsOptions {
+    /** The name server to be used for lookups.
+    * If not specified, defaults to the system configuration e.g. `/etc/resolv.conf` on Unix. */
+    nameServer?: {
+      /** The IP address of the name server */
+      ipAddr: string;
+      /** The port number the query will be sent to.
+      * If not specified, defaults to 53. */
+      port?: number;
+    };
+  }
+
+  /** If `resolveDns` is called with "MX" record type specified, it will return an array of this interface. */
+  export interface MXRecord {
+    preference: number;
+    exchange: string;
+  }
+
+  /** If `resolveDns` is called with "SRV" record type specified, it will return an array of this interface. */
+  export interface SRVRecord {
+    priority: number;
+    weight: number;
+    port: number;
+    target: string;
+  }
+
+  export function resolveDns(
+    query: string,
+    recordType: "A" | "AAAA" | "ANAME" | "CNAME" | "PTR",
+    options?: ResolveDnsOptions,
+  ): Promise<string[]>;
+
+  export function resolveDns(
+    query: string,
+    recordType: "MX",
+    options?: ResolveDnsOptions,
+  ): Promise<MXRecord[]>;
+
+  export function resolveDns(
+    query: string,
+    recordType: "SRV",
+    options?: ResolveDnsOptions,
+  ): Promise<SRVRecord[]>;
+
+  export function resolveDns(
+    query: string,
+    recordType: "TXT",
+    options?: ResolveDnsOptions,
+  ): Promise<string[][]>;
+
+  /** ** UNSTABLE**: new API, yet to be vetted.
+   *
+   * Performs DNS resolution against the given query, returning resolved records.
+   * Fails in the cases such as:
+   * - the query is in invalid format
+   * - the options have an invalid parameter, e.g. `nameServer.port` is beyond the range of 16-bit unsigned integer
+   * - timed out
+   *
+   * ```ts
+   * const a = await Deno.resolveDns("example.com", "A");
+   *
+   * const aaaa = await Deno.resolveDns("example.com", "AAAA", {
+   *   nameServer: { ipAddr: "8.8.8.8", port: 1234 },
+   * });
+   * ```
+   *
+   * Requires `allow-net` permission.
+   */
+  export function resolveDns(
+    query: string,
+    recordType: RecordType,
+    options?: ResolveDnsOptions,
+  ): Promise<string[] | MXRecord[] | SRVRecord[] | string[][]>;
+
+  /** **UNSTABLE**: new API, yet to be vetted.
+   *
+   * A generic transport listener for message-oriented protocols. */
+  export interface DatagramConn extends AsyncIterable<[Uint8Array, Addr]> {
+    /** **UNSTABLE**: new API, yet to be vetted.
+     *
+     * Waits for and resolves to the next message to the `UDPConn`. */
+    receive(p?: Uint8Array): Promise<[Uint8Array, Addr]>;
+    /** UNSTABLE: new API, yet to be vetted.
+     *
+     * Sends a message to the target. */
+    send(p: Uint8Array, addr: Addr): Promise<number>;
+    /** UNSTABLE: new API, yet to be vetted.
+     *
+     * Close closes the socket. Any pending message promises will be rejected
+     * with errors. */
+    close(): void;
+    /** Return the address of the `UDPConn`. */
+    readonly addr: Addr;
+    [Symbol.asyncIterator](): AsyncIterableIterator<[Uint8Array, Addr]>;
+  }
+
+  export interface UnixListenOptions {
+    /** A Path to the Unix Socket. */
+    path: string;
+  }
+
+  /** **UNSTABLE**: new API, yet to be vetted.
+   *
+   * Listen announces on the local transport address.
+   *
+   * ```ts
+   * const listener = Deno.listen({ path: "/foo/bar.sock", transport: "unix" })
+   * ```
+   *
+   * Requires `allow-read` and `allow-write` permission. */
+  export function listen(
+    options: UnixListenOptions & { transport: "unix" },
+  ): Listener;
+
+  /** **UNSTABLE**: new API, yet to be vetted
+   *
+   * Listen announces on the local transport address.
+   *
+   * ```ts
+   * const listener1 = Deno.listenDatagram({
+   *   port: 80,
+   *   transport: "udp"
+   * });
+   * const listener2 = Deno.listenDatagram({
+   *   hostname: "golang.org",
+   *   port: 80,
+   *   transport: "udp"
+   * });
+   * ```
+   *
+   * Requires `allow-net` permission. */
+  export function listenDatagram(
+    options: ListenOptions & { transport: "udp" },
+  ): DatagramConn;
+
+  /** **UNSTABLE**: new API, yet to be vetted
+   *
+   * Listen announces on the local transport address.
+   *
+   * ```ts
+   * const listener = Deno.listenDatagram({
+   *   address: "/foo/bar.sock",
+   *   transport: "unixpacket"
+   * });
+   * ```
+   *
+   * Requires `allow-read` and `allow-write` permission. */
+  export function listenDatagram(
+    options: UnixListenOptions & { transport: "unixpacket" },
+  ): DatagramConn;
+
+  export interface UnixConnectOptions {
+    transport: "unix";
+    path: string;
+  }
+
+  /** **UNSTABLE**:  The unix socket transport is unstable as a new API yet to
+   * be vetted.  The TCP transport is considered stable.
+   *
+   * Connects to the hostname (default is "127.0.0.1") and port on the named
+   * transport (default is "tcp"), and resolves to the connection (`Conn`).
+   *
+   * ```ts
+   * const conn1 = await Deno.connect({ port: 80 });
+   * const conn2 = await Deno.connect({ hostname: "192.0.2.1", port: 80 });
+   * const conn3 = await Deno.connect({ hostname: "[2001:db8::1]", port: 80 });
+   * const conn4 = await Deno.connect({ hostname: "golang.org", port: 80, transport: "tcp" });
+   * const conn5 = await Deno.connect({ path: "/foo/bar.sock", transport: "unix" });
+   * ```
+   *
+   * Requires `allow-net` permission for "tcp" and `allow-read` for "unix". */
+  export function connect(
+    options: ConnectOptions | UnixConnectOptions,
+  ): Promise<Conn>;
+
+  export interface StartTlsOptions {
+    /** A literal IP address or host name that can be resolved to an IP address.
+     * If not specified, defaults to `127.0.0.1`. */
+    hostname?: string;
+    /** Server certificate file. */
+    certFile?: string;
+  }
+
+  /** **UNSTABLE**: new API, yet to be vetted.
+   *
+   * Start TLS handshake from an existing connection using
+   * an optional cert file, hostname (default is "127.0.0.1").  The
+   * cert file is optional and if not included Mozilla's root certificates will
+   * be used (see also https://github.com/ctz/webpki-roots for specifics)
+   * Using this function requires that the other end of the connection is
+   * prepared for TLS handshake.
+   *
+   * ```ts
+   * const conn = await Deno.connect({ port: 80, hostname: "127.0.0.1" });
+   * const tlsConn = await Deno.startTls(conn, { certFile: "./certs/my_custom_root_CA.pem", hostname: "127.0.0.1", port: 80 });
+   * ```
+   *
+   * Requires `allow-net` permission.
+   */
+  export function startTls(
+    conn: Conn,
+    options?: StartTlsOptions,
+  ): Promise<Conn>;
+
+  /** **UNSTABLE**: The `signo` argument may change to require the Deno.Signal
+   * enum.
+   *
+   * Send a signal to process under given `pid`. This functionality currently
+   * only works on Linux and Mac OS.
+   *
+   * If `pid` is negative, the signal will be sent to the process group
+   * identified by `pid`.
+   *
+   *      const p = Deno.run({
+   *        cmd: ["sleep", "10000"]
+   *      });
+   *
+   *      Deno.kill(p.pid, Deno.Signal.SIGINT);
+   *
+   * Requires `allow-run` permission. */
+  export function kill(pid: number, signo: number): void;
+
+  /** The name of a "powerful feature" which needs permission.
+   *
+   * See: https://w3c.github.io/permissions/#permission-registry
+   *
+   * Note that the definition of `PermissionName` in the above spec is swapped
+   * out for a set of Deno permissions which are not web-compatible. */
+  export type PermissionName =
+    | "run"
+    | "read"
+    | "write"
+    | "net"
+    | "env"
+    | "plugin"
+    | "hrtime";
+
+  /** The current status of the permission.
+   *
+   * See: https://w3c.github.io/permissions/#status-of-a-permission */
+  export type PermissionState = "granted" | "denied" | "prompt";
+
+  export interface RunPermissionDescriptor {
+    name: "run";
+  }
+
+  export interface ReadPermissionDescriptor {
+    name: "read";
+    path?: string;
+  }
+
+  export interface WritePermissionDescriptor {
+    name: "write";
+    path?: string;
+  }
+
+  export interface NetPermissionDescriptor {
+    name: "net";
+    /** Optional host string of the form `"<hostname>[:<port>]"`. Examples:
+     *
+     *      "github.com"
+     *      "deno.land:8080"
+     */
+    host?: string;
+  }
+
+  export interface EnvPermissionDescriptor {
+    name: "env";
+  }
+
+  export interface PluginPermissionDescriptor {
+    name: "plugin";
+  }
+
+  export interface HrtimePermissionDescriptor {
+    name: "hrtime";
+  }
+
+  /** Permission descriptors which define a permission and can be queried,
+   * requested, or revoked.
+   *
+   * See: https://w3c.github.io/permissions/#permission-descriptor */
+  export type PermissionDescriptor =
+    | RunPermissionDescriptor
+    | ReadPermissionDescriptor
+    | WritePermissionDescriptor
+    | NetPermissionDescriptor
+    | EnvPermissionDescriptor
+    | PluginPermissionDescriptor
+    | HrtimePermissionDescriptor;
+
+  export class Permissions {
+    /** Resolves to the current status of a permission.
+     *
+     * ```ts
+     * const status = await Deno.permissions.query({ name: "read", path: "/etc" });
+     * if (status.state === "granted") {
+     *   data = await Deno.readFile("/etc/passwd");
+     * }
+     * ```
+     */
+    query(desc: PermissionDescriptor): Promise<PermissionStatus>;
+
+    /** Revokes a permission, and resolves to the state of the permission.
+     *
+     *       const status = await Deno.permissions.revoke({ name: "run" });
+     *       assert(status.state !== "granted")
+     */
+    revoke(desc: PermissionDescriptor): Promise<PermissionStatus>;
+
+    /** Requests the permission, and resolves to the state of the permission.
+     *
+     * ```ts
+     * const status = await Deno.permissions.request({ name: "env" });
+     * if (status.state === "granted") {
+     *   console.log("'env' permission is granted.");
+     * } else {
+     *   console.log("'env' permission is denied.");
+     * }
+     * ```
+     */
+    request(desc: PermissionDescriptor): Promise<PermissionStatus>;
+  }
+
+  /** **UNSTABLE**: Under consideration to move to `navigator.permissions` to
+   * match web API. It could look like `navigator.permissions.query({ name: Deno.symbols.read })`.
+   */
+  export const permissions: Permissions;
+
+  /** see: https://w3c.github.io/permissions/#permissionstatus */
+  export class PermissionStatus {
+    state: PermissionState;
+    constructor();
+  }
+
+  /**  **UNSTABLE**: New API, yet to be vetted.  Additional consideration is still
+   * necessary around the permissions required.
+   *
+   * Get the `hostname` of the machine the Deno process is running on.
+   *
+   * ```ts
+   * console.log(Deno.hostname());
+   * ```
+   *
+   *  Requires `allow-env` permission.
+   */
+  export function hostname(): string;
+
+  /** **UNSTABLE**: new API, yet to be vetted.
+   * Synchronously truncates or extends the specified file stream, to reach the
+   * specified `len`.  If `len` is not specified then the entire file contents
+   * are truncated.
+   *
+   * ```ts
+   * // truncate the entire file
+   * const file = Deno.open("my_file.txt", { read: true, write: true, truncate: true, create: true });
+   * Deno.ftruncateSync(file.rid);
+   *
+   * // truncate part of the file
+   * const file = Deno.open("my_file.txt", { read: true, write: true, create: true });
+   * Deno.write(file.rid, new TextEncoder().encode("Hello World"));
+   * Deno.ftruncateSync(file.rid, 7);
+   * const data = new Uint8Array(32);
+   * Deno.readSync(file.rid, data);
+   * console.log(new TextDecoder().decode(data)); // Hello W
+   * ```
+   */
+  export function ftruncateSync(rid: number, len?: number): void;
+
+  /** **UNSTABLE**: new API, yet to be vetted.
+   * Truncates or extends the specified file stream, to reach the specified `len`. If
+   * `len` is not specified then the entire file contents are truncated.
+   *
+   * ```ts
+   * // truncate the entire file
+   * const file = Deno.open("my_file.txt", { read: true, write: true, create: true });
+   * await Deno.ftruncate(file.rid);
+   *
+   * // truncate part of the file
+   * const file = Deno.open("my_file.txt", { read: true, write: true, create: true });
+   * await Deno.write(file.rid, new TextEncoder().encode("Hello World"));
+   * await Deno.ftruncate(file.rid, 7);
+   * const data = new Uint8Array(32);
+   * await Deno.read(file.rid, data);
+   * console.log(new TextDecoder().decode(data)); // Hello W
+   * ```
+   */
+  export function ftruncate(rid: number, len?: number): Promise<void>;
+
+  /** **UNSTABLE**: New API, yet to be vetted.
+   * Synchronously returns a `Deno.FileInfo` for the given file stream.
+   *
+   * ```ts
+   * const file = Deno.openSync("file.txt", { read: true });
+   * const fileInfo = Deno.fstatSync(file.rid);
+   * assert(fileInfo.isFile);
+   * ```
+   */
+  export function fstatSync(rid: number): FileInfo;
+
+  /** **UNSTABLE**: New API, yet to be vetted.
+   * Returns a `Deno.FileInfo` for the given file stream.
+   *
+   * ```ts
+   * const file = await Deno.open("file.txt", { read: true });
+   * const fileInfo = await Deno.fstat(file.rid);
+   * assert(fileInfo.isFile);
+   * ```
+   */
+  export function fstat(rid: number): Promise<FileInfo>;
+
+  /** **UNSTABLE**: New API, yet to be vetted.
+   * The pid of the current process's parent.
+   */
+  export const ppid: number;
+
+  /** **UNSTABLE**: New API, yet to be vetted.
+   * A custom HttpClient for use with `fetch`.
+   *
+   * ```ts
+   * const client = new Deno.createHttpClient({ caFile: "./ca.pem" });
+   * const req = await fetch("https://myserver.com", { client });
+   * ```
+   */
+  export class HttpClient {
+    rid: number;
+    close(): void;
+  }
+
+  /** **UNSTABLE**: New API, yet to be vetted.
+   * The options used when creating a [HttpClient].
+   */
+  interface CreateHttpClientOptions {
+    /** A certificate authority to use when validating TLS certificates. Certificate data must be PEM encoded.
+     */
+    caData?: string;
+  }
+
+  /** **UNSTABLE**: New API, yet to be vetted.
+   * Create a custom HttpClient for to use with `fetch`.
+   *
+   * ```ts
+   * const client = new Deno.createHttpClient({ caFile: "./ca.pem" });
+   * const req = await fetch("https://myserver.com", { client });
+   * ```
+   */
+  export function createHttpClient(
+    options: CreateHttpClientOptions,
+  ): HttpClient;
+
+  /** **UNSTABLE**: needs investigation into high precision time.
+   *
+   * Synchronously changes the access (`atime`) and modification (`mtime`) times
+   * of a file stream resource referenced by `rid`. Given times are either in
+   * seconds (UNIX epoch time) or as `Date` objects.
+   *
+   * ```ts
+   * const file = Deno.openSync("file.txt", { create: true });
+   * Deno.futimeSync(file.rid, 1556495550, new Date());
+   * ```
+   */
+  export function futimeSync(
+    rid: number,
+    atime: number | Date,
+    mtime: number | Date,
+  ): void;
+
+  /** **UNSTABLE**: needs investigation into high precision time.
+   *
+   * Changes the access (`atime`) and modification (`mtime`) times of a file
+   * stream resource referenced by `rid`. Given times are either in seconds
+   * (UNIX epoch time) or as `Date` objects.
+   *
+   * ```ts
+   * const file = await Deno.open("file.txt", { create: true });
+   * await Deno.futime(file.rid, 1556495550, new Date());
+   * ```
+   */
+  export function futime(
+    rid: number,
+    atime: number | Date,
+    mtime: number | Date,
+  ): Promise<void>;
+
+  /** *UNSTABLE**: new API, yet to be vetted.
+   *
+   * SleepSync puts the main thread to sleep synchronously for a given amount of
+   * time in milliseconds.
+   *
+   * ```ts
+   * Deno.sleepSync(10);
+   * ```
+   */
+  export function sleepSync(millis: number): Promise<void>;
+}
+
+declare function fetch(
+  input: Request | URL | string,
+  init?: RequestInit & { client: Deno.HttpClient },
+): Promise<Response>;

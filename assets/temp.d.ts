@@ -1,5 +1,5 @@
 interface Test {
-    un: string;
-    deux: number;
-    trois: Test;
+  un: string;
+  deux: number;
+  trois: Test;
 }
