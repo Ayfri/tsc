@@ -15,7 +15,12 @@ export default class CompileCommand extends Command {
 		const lastResult: string = Deno.readTextFileSync(
 			CompileCommand.tempPath.replace(/.ts$/, '.js'),
 		);
+		
 		Deno.writeTextFileSync(CompileCommand.tempPath, code, {
+			create: false,
+		});
+		
+		Deno.writeTextFileSync(CompileCommand.tempPathDTS, '', {
 			create: false,
 		});
 		
