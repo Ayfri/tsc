@@ -1,5 +1,1 @@
-interface Test {
-  un: string;
-  deux: number;
-  trois: Test;
-}
+declare function random<T extends any>(array: T[]): T;

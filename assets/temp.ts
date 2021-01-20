@@ -1,5 +1,1 @@
-interface Test {
-  un: string;
-  deux: number;
-  trois: Test;
-}
+ function random<T extends any>(array: T[]): T {   return array[Math.floor(Math.random() * array.length)]; } 

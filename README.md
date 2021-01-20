@@ -1,5 +1,5 @@
 ![GitHub repo size](https://img.shields.io/github/repo-size/Ayfri/tsc)
-![deno version](https://img.shields.io/badge/deno-^1.5.1-grey?logo=deno)
+![deno version](https://img.shields.io/badge/deno-1.7.0-grey?logo=deno)
 
 # TSC Bot
 
