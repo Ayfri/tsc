@@ -31,7 +31,7 @@ export default class EvalCommand extends Command {
 		}
 		
 		if (!isOwner(message.author.id)) {
-			await send('Blah, t\'as pas la permission !');
+			await send("Blah, you don't have permission");
 		} else {
 			try {
 				async function wait(callback: () => any): Promise<void> {
