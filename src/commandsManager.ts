@@ -17,7 +17,7 @@ export async function commandsManager(
 				console.warn(`Could not load '${commandFile.name}' command !`);
 				continue;
 			}
-			commands.set(commandFile.name, command);
+			commands.set(command.name, command);
 			console.log(`Successfully loaded '${command.name}' command !`);
 		}
 	}
