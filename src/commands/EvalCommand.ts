@@ -10,24 +10,22 @@ export default class EvalCommand extends Command {
 	public async run(message: Message, args: string[]): Promise<void> {
 		function send(
 			content: string,
-			channelID: string = message.channelID,
-		): Promise<any> {
+		): Promise<Message> {
 			return message.send(crop(content, 2000));
 		}
 		
 		function sendJS(
 			content: string,
 			channelID: string = message.channelID,
-		): Promise<any> {
-			return sendMarkdown(content, 'ts', channelID);
+		): Promise<Message> {
+			return sendMarkdown(content, 'ts');
 		}
 		
 		function sendMarkdown(
 			content: string,
 			language: string = 'ts',
-			channelID: string = message.channelID,
-		): Promise<any> {
-			return send(codeBlock(content, language), channelID);
+		): Promise<Message> {
+			return send(codeBlock(content, language));
 		}
 		
 		if (!isOwner(message.author.id)) {
