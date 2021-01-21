@@ -20,21 +20,7 @@ export default class ReloadCommand extends Command {
 			const path: string = Deno.realPathSync(dotEnvConfig.commandsFolder);
 			const cmdFileName: string = commandToFile(oldCommand.name);
 			const fullPath: string = path + SEP + cmdFileName;
-			// Executing the 'deno cache' command
-			const response = Deno.run({
-				cmd:    [Deno.execPath(), 'cache', `${cmdFileName} --unstable`],
-				cwd:    path,
-				stdout: 'piped',
-				stderr: 'piped',
-				stdin:  'piped',
-			});
-			console.log(new TextDecoder("utf-8").decode(await response.output()));
-			console.log(
-				new TextDecoder("utf-8").decode(await response.stderrOutput()),
-			);
-			
-			let imported: any = await import(`file:///${fullPath}#${this.reloadCounter}`);
-			const newCommand = new (imported.default)();
+			const newCommand: any = new ((await import(`file:///${fullPath}#${this.reloadCounter}`)).default)();
 			commands.set(newCommand.name, newCommand);
 			message.send(`Reloaded command \`${newCommand.name}\` !`);
 			
