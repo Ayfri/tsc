@@ -1,17 +1,16 @@
-import {Message} from '../../deps.ts';
-import Command from '../classes/Command.ts';
+import {CommandContext} from '../../deps.ts';
+import {Command} from '../../deps.ts';
 import {codeBlock, crop} from '../utils/utils.ts';
 
 export default class CompileCommand extends Command {
 	private static readonly tempPath: string = '.\\assets\\temp.ts';
 	private static readonly tempPathDTS: string = '.\\assets\\temp.d.ts';
+	name = 'compile';
+	aliases = ['tsc', 'c'];
+	category = 'utils';
 	
-	public constructor() {
-		super('compile');
-	}
-	
-	public async run(message: Message, args: string[]): Promise<void> {
-		const code: string = args.join(' ').replace(/```(ts|typescript)?/gi, '');
+	public async execute(ctx: CommandContext): Promise<void> {
+		const code: string = ctx.args.join(' ').replace(/```(ts|typescript)?/gi, '');
 		const lastResult: string = Deno.readTextFileSync(
 			CompileCommand.tempPath.replace(/.ts$/, '.js'),
 		);
@@ -43,14 +42,14 @@ export default class CompileCommand extends Command {
 		);
 		
 		if (lastResult === result && errors) {
-			message.send(`> **Errors :**\n${codeBlock(crop(errors, 1990), 'ts')}`);
+			ctx.message.reply(`> **Errors :**\n${codeBlock(crop(errors, 1990), 'ts')}`);
 		} else {
-			message.send(codeBlock(crop(result, 1990), 'js'));
+			ctx.message.reply(codeBlock(crop(result, 1990), 'js'));
 			if (types) {
-				message.send(`> **Types :**\n${codeBlock(crop(types, 1990), 'ts')}`);
+				ctx.message.reply(`> **Types :**\n${codeBlock(crop(types, 1990), 'ts')}`);
 			}
 			if (errors) {
-				message.send(`> **Errors :**\n${codeBlock(crop(errors, 1990), 'ts')}`);
+				ctx.message.reply(`> **Errors :**\n${codeBlock(crop(errors, 1990), 'ts')}`);
 			}
 		}
 	}
