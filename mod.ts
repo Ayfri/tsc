@@ -12,6 +12,6 @@ export const client = new CommandClient({
 	],
 });
 
-client.connect();
-client.commands.loader.loadDirectory(`src${SEP}commands`)
+client.commands.loader.loadDirectory(`src${SEP}commands`);
 client.on('ready', () => console.log(`Ready! User: ${client.user?.tag}`));
+client.connect();

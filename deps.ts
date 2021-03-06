@@ -1,4 +1,5 @@
 import {config} from 'https://deno.land/x/dotenv/mod.ts';
+
 export {SEP} from 'https://deno.land/std@0.89.0/path/mod.ts';
 
 export {
@@ -6,7 +7,7 @@ export {
 	Message,
 	GatewayIntents,
 	Command,
-} from 'https://deno.land/x/harmony/mod.ts'
+} from 'https://deno.land/x/harmony/mod.ts';
 export type {CommandContext} from 'https://deno.land/x/harmony/mod.ts';
 
 export const dotEnvConfig = config();

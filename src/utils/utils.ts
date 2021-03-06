@@ -28,6 +28,6 @@ export async function compileTSToJS(code: string) {
 			declaration:   false,
 		},
 	});
-	
+
 	return Object.values(files)[0];
 }

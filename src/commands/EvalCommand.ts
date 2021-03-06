@@ -1,6 +1,6 @@
 import {Command, CommandContext, Message} from '../../deps.ts';
 import {client} from '../../mod.ts';
-import {codeBlock, compileTSToJS, crop, isOwner} from '../utils/utils.ts';
+import {codeBlock, compileTSToJS, crop} from '../utils/utils.ts';
 
 export default class EvalCommand extends Command {
 	name = 'eval';
@@ -13,14 +13,14 @@ export default class EvalCommand extends Command {
 		): Promise<Message> {
 			return ctx.message.reply(crop(content, 2000));
 		}
-		
+
 		function sendJS(
 			content: string,
 			channelID: string = ctx.channel.id,
 		): Promise<Message> {
 			return sendMarkdown(content, 'ts');
 		}
-		
+
 		function sendMarkdown(
 			content: string,
 			language: string = 'ts',
