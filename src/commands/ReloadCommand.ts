@@ -1,29 +1,25 @@
-import {dotEnvConfig, Message, SEP} from '../../deps.ts';
-import Command from '../classes/Command.ts';
-import {commands} from '../commandsManager.ts';
+import {Command, CommandContext, dotEnvConfig, SEP} from '../../deps.ts';
+import {client} from '../../mod.ts';
 import {commandToFile} from '../utils/utils.ts';
 
 export default class ReloadCommand extends Command {
 	private reloadCounter: number = 0;
-	
-	public constructor() {
-		super('reload');
-	}
-	
-	public async run(message: Message, args: string[]): Promise<void> {
-		const commandName: string = args[0];
-		const oldCommand: Command | undefined = commands.find((c: Command) =>
-			c.name.toLowerCase().includes(commandName.toLowerCase()),
-		);
+	public name = 'reload';
+	public aliases = ['rl'];
+	public whitelistedUsers = client.owners;
+
+	public async execute(ctx: CommandContext): Promise<void> {
+		const commandName: string = ctx.args[0];
+		const oldCommand: Command | undefined = ctx.client.commands.find(commandName);
 		if (oldCommand) {
-			commands.delete(oldCommand.name);
-			const path: string = Deno.realPathSync(dotEnvConfig.commandsFolder);
-			const cmdFileName: string = commandToFile(oldCommand.name);
-			const fullPath: string = path + SEP + cmdFileName;
-			const newCommand: any = new ((await import(`file:///${fullPath}#${this.reloadCounter}`)).default)();
-			commands.set(newCommand.name, newCommand);
-			message.send(`Reloaded command \`${newCommand.name}\` !`);
-			
+			console.log(`Reloading command '${oldCommand.name}'.`);
+
+			client.commands.delete(oldCommand);
+			const fullPath: string = `file:///${Deno.realPathSync(dotEnvConfig.commandsFolder) + SEP + commandToFile(oldCommand.name)}#${this.reloadCounter}`;
+			const newCommand: any = new ((await import(fullPath)).default)();
+			client.commands.list.set(`${newCommand.name}-0`, newCommand);
+
+			ctx.message.reply(`Reloaded command \`${newCommand.name}\` !`);
 			this.reloadCounter++;
 		}
 	}

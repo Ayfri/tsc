@@ -108,6 +108,10 @@ declare namespace Deno {
      * after the test has exactly the same contents as before the test. Defaults
      * to true. */
     sanitizeResources?: boolean;
+
+    /** Ensure the test case does not prematurely cause the process to exit,
+     * for example via a call to `Deno.exit`. Defaults to true. */
+    sanitizeExit?: boolean;
   }
 
   /** Register a test which will be run when `deno test` is used on the command
@@ -260,6 +264,27 @@ declare namespace Deno {
    * Requires --allow-read
    */
   export function cwd(): string;
+
+  /**
+   * Synchronously creates `newpath` as a hard link to `oldpath`.
+   *
+   * ```ts
+   * Deno.linkSync("old/name", "new/name");
+   * ```
+   *
+   * Requires `allow-read` and `allow-write` permissions. */
+  export function linkSync(oldpath: string, newpath: string): void;
+
+  /**
+   *
+   * Creates `newpath` as a hard link to `oldpath`.
+   *
+   * ```ts
+   * await Deno.link("old/name", "new/name");
+   * ```
+   *
+   * Requires `allow-read` and `allow-write` permissions. */
+  export function link(oldpath: string, newpath: string): Promise<void>;
 
   export enum SeekMode {
     Start = 0,
@@ -1710,9 +1735,9 @@ declare namespace Deno {
     readonly remoteAddr: Addr;
     /** The resource ID of the connection. */
     readonly rid: number;
-    /** Shuts down (`shutdown(2)`) the writing side of the TCP connection. Most
+    /** Shuts down (`shutdown(2)`) the write side of the connection. Most
      * callers should just use `close()`. */
-    closeWrite(): void;
+    closeWrite(): Promise<void>;
   }
 
   export interface ListenOptions {
@@ -1910,7 +1935,29 @@ declare namespace Deno {
       : (Reader & Closer) | null;
     readonly stderr: T["stderr"] extends "piped" ? Reader & Closer
       : (Reader & Closer) | null;
-    /** Resolves to the current status of the process. */
+    /** Wait for the process to exit and return its exit status.
+     *
+     * Calling this function multiple times will return the same status.
+     *
+     * Stdin handle to the process will be closed before waiting to avoid
+     * a deadlock.
+     *
+     * If `stdout` and/or `stderr` were set to `"piped"`, they must be closed
+     * manually before the process can exit.
+     * 
+     * To run process to completion and collect output from both `stdout` and
+     * `stderr` use:
+     * 
+     * ```ts
+     * const p = Deno.run({ cmd, stderr: 'piped', stdout: 'piped' });
+     * const [status, stdout, stderr] = await Promise.all([
+     *   p.status(),
+     *   p.output(),
+     *   p.stderrOutput()
+     * ]);
+     * p.close();
+     * ```
+     **/
     status(): Promise<ProcessStatus>;
     /** Buffer the stdout until EOF and return it as `Uint8Array`.
      *
@@ -2012,6 +2059,8 @@ declare namespace Deno {
     trailingComma?: boolean;
     /*** Evaluate the result of calling getters. Defaults to false. */
     getters?: boolean;
+    /** Show an object's non-enumerable properties. Defaults to false. */
+    showHidden?: boolean;
   }
 
   /** Converts the input into a string that has the same format as printed by
@@ -2047,6 +2096,140 @@ declare namespace Deno {
    *
    */
   export function inspect(value: unknown, options?: InspectOptions): string;
+
+  /** The name of a "powerful feature" which needs permission. */
+  export type PermissionName =
+    | "run"
+    | "read"
+    | "write"
+    | "net"
+    | "env"
+    | "plugin"
+    | "hrtime";
+
+  /** The current status of the permission. */
+  export type PermissionState = "granted" | "denied" | "prompt";
+
+  export interface RunPermissionDescriptor {
+    name: "run";
+  }
+
+  export interface ReadPermissionDescriptor {
+    name: "read";
+    path?: string;
+  }
+
+  export interface WritePermissionDescriptor {
+    name: "write";
+    path?: string;
+  }
+
+  export interface NetPermissionDescriptor {
+    name: "net";
+    /** Optional host string of the form `"<hostname>[:<port>]"`. Examples:
+     *
+     *      "github.com"
+     *      "deno.land:8080"
+     */
+    host?: string;
+  }
+
+  export interface EnvPermissionDescriptor {
+    name: "env";
+  }
+
+  export interface PluginPermissionDescriptor {
+    name: "plugin";
+  }
+
+  export interface HrtimePermissionDescriptor {
+    name: "hrtime";
+  }
+
+  /** Permission descriptors which define a permission and can be queried,
+   * requested, or revoked. */
+  export type PermissionDescriptor =
+    | RunPermissionDescriptor
+    | ReadPermissionDescriptor
+    | WritePermissionDescriptor
+    | NetPermissionDescriptor
+    | EnvPermissionDescriptor
+    | PluginPermissionDescriptor
+    | HrtimePermissionDescriptor;
+
+  export interface PermissionStatusEventMap {
+    "change": Event;
+  }
+
+  export class PermissionStatus extends EventTarget {
+    // deno-lint-ignore no-explicit-any
+    onchange: ((this: PermissionStatus, ev: Event) => any) | null;
+    readonly state: PermissionState;
+    addEventListener<K extends keyof PermissionStatusEventMap>(
+      type: K,
+      listener: (
+        this: PermissionStatus,
+        ev: PermissionStatusEventMap[K],
+      ) => any,
+      options?: boolean | AddEventListenerOptions,
+    ): void;
+    addEventListener(
+      type: string,
+      listener: EventListenerOrEventListenerObject,
+      options?: boolean | AddEventListenerOptions,
+    ): void;
+    removeEventListener<K extends keyof PermissionStatusEventMap>(
+      type: K,
+      listener: (
+        this: PermissionStatus,
+        ev: PermissionStatusEventMap[K],
+      ) => any,
+      options?: boolean | EventListenerOptions,
+    ): void;
+    removeEventListener(
+      type: string,
+      listener: EventListenerOrEventListenerObject,
+      options?: boolean | EventListenerOptions,
+    ): void;
+  }
+
+  export class Permissions {
+    /** Resolves to the current status of a permission.
+     *
+     * ```ts
+     * const status = await Deno.permissions.query({ name: "read", path: "/etc" });
+     * if (status.state === "granted") {
+     *   data = await Deno.readFile("/etc/passwd");
+     * }
+     * ```
+     */
+    query(desc: PermissionDescriptor): Promise<PermissionStatus>;
+
+    /** Revokes a permission, and resolves to the state of the permission.
+     *
+     * ```ts
+     * const status = await Deno.permissions.revoke({ name: "run" });
+     * assert(status.state !== "granted")
+     * ```
+     */
+    revoke(desc: PermissionDescriptor): Promise<PermissionStatus>;
+
+    /** Requests the permission, and resolves to the state of the permission.
+     *
+     * ```ts
+     * const status = await Deno.permissions.request({ name: "env" });
+     * if (status.state === "granted") {
+     *   console.log("'env' permission is granted.");
+     * } else {
+     *   console.log("'env' permission is denied.");
+     * }
+     * ```
+     */
+    request(desc: PermissionDescriptor): Promise<PermissionStatus>;
+  }
+
+  /** Deno's permission management API. */
+  export const permissions: Permissions;
 
   /** Build related information. */
   export const build: {
@@ -2090,6 +2273,44 @@ declare namespace Deno {
 
   /** The URL of the entrypoint module entered from the command-line. */
   export const mainModule: string;
+
+  export type SymlinkOptions = {
+    type: "file" | "dir";
+  };
+
+  /**
+   * Creates `newpath` as a symbolic link to `oldpath`.
+   *
+   * The options.type parameter can be set to `file` or `dir`. This argument is only
+   * available on Windows and ignored on other platforms.
+   *
+   * ```ts
+   * Deno.symlinkSync("old/name", "new/name");
+   * ```
+   *
+   * Requires `allow-write` permission. */
+  export function symlinkSync(
+    oldpath: string,
+    newpath: string,
+    options?: SymlinkOptions,
+  ): void;
+
+  /**
+   * Creates `newpath` as a symbolic link to `oldpath`.
+   *
+   * The options.type parameter can be set to `file` or `dir`. This argument is only
+   * available on Windows and ignored on other platforms.
+   *
+   * ```ts
+   * await Deno.symlink("old/name", "new/name");
+   * ```
+   *
+   * Requires `allow-write` permission. */
+  export function symlink(
+    oldpath: string,
+    newpath: string,
+    options?: SymlinkOptions,
+  ): Promise<void>;
 }
 
 // Copyright 2018-2021 the Deno authors. All rights reserved. MIT license.
@@ -2408,6 +2629,175 @@ declare var FileReader: {
   readonly LOADING: number;
 };
 
+declare class URLSearchParams {
+  constructor(
+    init?: string[][] | Record<string, string> | string | URLSearchParams,
+  );
+  static toString(): string;
+
+  /** Appends a specified key/value pair as a new search parameter.
+   *
+   * ```ts
+   * let searchParams = new URLSearchParams();
+   * searchParams.append('name', 'first');
+   * searchParams.append('name', 'second');
+   * ```
+   */
+  append(name: string, value: string): void;
+
+  /** Deletes the given search parameter and its associated value,
+   * from the list of all search parameters.
+   *
+   * ```ts
+   * let searchParams = new URLSearchParams([['name', 'value']]);
+   * searchParams.delete('name');
+   * ```
+   */
+  delete(name: string): void;
+
+  /** Returns all the values associated with a given search parameter
+   * as an array.
+   *
+   * ```ts
+   * searchParams.getAll('name');
+   * ```
+   */
+  getAll(name: string): string[];
+
+  /** Returns the first value associated to the given search parameter.
+   *
+   * ```ts
+   * searchParams.get('name');
+   * ```
+   */
+  get(name: string): string | null;
+
+  /** Returns a Boolean that indicates whether a parameter with the
+   * specified name exists.
+   *
+   * ```ts
+   * searchParams.has('name');
+   * ```
+   */
+  has(name: string): boolean;
+
+  /** Sets the value associated with a given search parameter to the
+   * given value. If there were several matching values, this method
+   * deletes the others. If the search parameter doesn't exist, this
+   * method creates it.
+   *
+   * ```ts
+   * searchParams.set('name', 'value');
+   * ```
+   */
+  set(name: string, value: string): void;
+
+  /** Sort all key/value pairs contained in this object in place and
+   * return undefined. The sort order is according to Unicode code
+   * points of the keys.
+   *
+   * ```ts
+   * searchParams.sort();
+   * ```
+   */
+  sort(): void;
+
+  /** Calls a function for each element contained in this object in
+   * place and return undefined. Optionally accepts an object to use
+   * as this when executing callback as second argument.
+   *
+   * ```ts
+   * const params = new URLSearchParams([["a", "b"], ["c", "d"]]);
+   * params.forEach((value, key, parent) => {
+   *   console.log(value, key, parent);
+   * });
+   * ```
+   *
+   */
+  forEach(
+    callbackfn: (value: string, key: string, parent: this) => void,
+    thisArg?: any,
+  ): void;
+
+  /** Returns an iterator allowing to go through all keys contained
+   * in this object.
+   *
+   * ```ts
+   * const params = new URLSearchParams([["a", "b"], ["c", "d"]]);
+   * for (const key of params.keys()) {
+   *   console.log(key);
+   * }
+   * ```
+   */
+  keys(): IterableIterator<string>;
+
+  /** Returns an iterator allowing to go through all values contained
+   * in this object.
+   *
+   * ```ts
+   * const params = new URLSearchParams([["a", "b"], ["c", "d"]]);
+   * for (const value of params.values()) {
+   *   console.log(value);
+   * }
+   * ```
+   */
+  values(): IterableIterator<string>;
+
+  /** Returns an iterator allowing to go through all key/value
+   * pairs contained in this object.
+   *
+   * ```ts
+   * const params = new URLSearchParams([["a", "b"], ["c", "d"]]);
+   * for (const [key, value] of params.entries()) {
+   *   console.log(key, value);
+   * }
+   * ```
+   */
+  entries(): IterableIterator<[string, string]>;
+
+  /** Returns an iterator allowing to go through all key/value
+   * pairs contained in this object.
+   *
+   * ```ts
+   * const params = new URLSearchParams([["a", "b"], ["c", "d"]]);
+   * for (const [key, value] of params) {
+   *   console.log(key, value);
+   * }
+   * ```
+   */
+  [Symbol.iterator](): IterableIterator<[string, string]>;
+
+  /** Returns a query string suitable for use in a URL.
+   *
+   * ```ts
+   * searchParams.toString();
+   * ```
+   */
+  toString(): string;
+}
+
+/** The URL interface represents an object providing static methods used for creating object URLs. */
+declare class URL {
+  constructor(url: string, base?: string | URL);
+  createObjectURL(object: any): string;
+  revokeObjectURL(url: string): void;
+
+  hash: string;
+  host: string;
+  hostname: string;
+  href: string;
+  toString(): string;
+  readonly origin: string;
+  password: string;
+  pathname: string;
+  port: string;
+  protocol: string;
+  search: string;
+  readonly searchParams: URLSearchParams;
+  username: string;
+  toJSON(): string;
+}
+
 // Copyright 2018-2021 the Deno authors. All rights reserved. MIT license.
 
 // deno-lint-ignore-file no-explicit-any
@@ -2701,7 +3091,7 @@ type BlobPart = BufferSource | Blob | string;
 
 interface BlobPropertyBag {
   type?: string;
-  ending?: "transparent" | "native";
+  endings?: "transparent" | "native";
 }
 
 /** A file-like object of immutable, raw data. Blobs represent data that isn't necessarily in a JavaScript-native format. The File interface is based on Blob, inheriting blob functionality and expanding it to support files on the user's system. */
@@ -3155,6 +3545,1133 @@ declare function fetch(
 
 // Copyright 2018-2021 the Deno authors. All rights reserved. MIT license.
 
+// deno-lint-ignore-file no-explicit-any no-empty-interface
+
+/// <reference no-default-lib="true" />
+/// <reference lib="esnext" />
+
+// 8cc98b6f10b7f354473a08c3773bb1de839845b9
+
+interface GPUObjectBase {
+  label: string | null;
+}
+
+declare interface GPUObjectDescriptorBase {
+  label?: string;
+}
+
+declare class GPUAdapterLimits {
+  maxTextureDimension1D?: number;
+  maxTextureDimension2D?: number;
+  maxTextureDimension3D?: number;
+  maxTextureArrayLayers?: number;
+  maxBindGroups?: number;
+  maxDynamicUniformBuffersPerPipelineLayout?: number;
+  maxDynamicStorageBuffersPerPipelineLayout?: number;
+  maxSampledTexturesPerShaderStage?: number;
+  maxSamplersPerShaderStage?: number;
+  maxStorageBuffersPerShaderStage?: number;
+  maxStorageTexturesPerShaderStage?: number;
+  maxUniformBuffersPerShaderStage?: number;
+  maxUniformBufferBindingSize?: number;
+  maxStorageBufferBindingSize?: number;
+  maxVertexBuffers?: number;
+  maxVertexAttributes?: number;
+  maxVertexBufferArrayStride?: number;
+}
+
+declare class GPUAdapterFeatures {
+  forEach(
+    callbackfn: (
+      value: GPUFeatureName,
+      value2: GPUFeatureName,
+      set: Set<GPUFeatureName>,
+    ) => void,
+    thisArg?: any,
+  ): void;
+  has(value: GPUFeatureName): boolean;
+  size: number;
+  [
+    Symbol
+      .iterator
+  ](): IterableIterator<GPUFeatureName>;
+  entries(): IterableIterator<[GPUFeatureName, GPUFeatureName]>;
+  keys(): IterableIterator<GPUFeatureName>;
+  values(): IterableIterator<GPUFeatureName>;
+}
+
+declare class GPU {
+  requestAdapter(
+    options?: GPURequestAdapterOptions,
+  ): Promise<GPUAdapter | null>;
+}
+
+declare interface GPURequestAdapterOptions {
+  powerPreference?: GPUPowerPreference;
+}
+
+declare type GPUPowerPreference = "low-power" | "high-performance";
+
+declare class GPUAdapter {
+  readonly name: string;
+  readonly features: GPUAdapterFeatures;
+  readonly limits: GPUAdapterLimits;
+
+  requestDevice(descriptor?: GPUDeviceDescriptor): Promise<GPUDevice | null>;
+}
+
+declare interface GPUDeviceDescriptor extends GPUObjectDescriptorBase {
+  nonGuaranteedFeatures?: GPUFeatureName[];
+  nonGuaranteedLimits?: Record<string, number>;
+}
+
+declare type GPUFeatureName =
+  | "depth-clamping"
+  | "depth24unorm-stencil8"
+  | "depth32float-stencil8"
+  | "pipeline-statistics-query"
+  | "texture-compression-bc"
+  | "timestamp-query"
+  // extended from spec
+  | "mappable-primary-buffers"
+  | "sampled-texture-binding-array"
+  | "sampled-texture-array-dynamic-indexing"
+  | "sampled-texture-array-non-uniform-indexing"
+  | "unsized-binding-array"
+  | "multi-draw-indirect"
+  | "multi-draw-indirect-count"
+  | "push-constants"
+  | "address-mode-clamp-to-border"
+  | "non-fill-polygon-mode"
+  | "texture-compression-etc2"
+  | "texture-compression-astc-ldr"
+  | "texture-adapter-specific-format-features"
+  | "shader-float64"
+  | "vertex-attribute-64bit";
+
+declare class GPUDevice extends EventTarget implements GPUObjectBase {
+  label: string | null;
+
+  readonly lost: Promise<GPUDeviceLostInfo>;
+  pushErrorScope(filter: GPUErrorFilter): undefined;
+  popErrorScope(): Promise<GPUError | null>;
+  onuncapturederror:
+    | ((this: GPUDevice, ev: GPUUncapturedErrorEvent) => any)
+    | null;
+
+  readonly adapter: GPUAdapter;
+  readonly features: ReadonlyArray<GPUFeatureName>;
+  readonly limits: Record<string, number>;
+  readonly queue: GPUQueue;
+
+  destroy(): undefined;
+
+  createBuffer(descriptor: GPUBufferDescriptor): GPUBuffer;
+  createTexture(descriptor: GPUTextureDescriptor): GPUTexture;
+  createSampler(descriptor?: GPUSamplerDescriptor): GPUSampler;
+
+  createBindGroupLayout(
+    descriptor: GPUBindGroupLayoutDescriptor,
+  ): GPUBindGroupLayout;
+  createPipelineLayout(
+    descriptor: GPUPipelineLayoutDescriptor,
+  ): GPUPipelineLayout;
+  createBindGroup(descriptor: GPUBindGroupDescriptor): GPUBindGroup;
+
+  createShaderModule(descriptor: GPUShaderModuleDescriptor): GPUShaderModule;
+  createComputePipeline(
+    descriptor: GPUComputePipelineDescriptor,
+  ): GPUComputePipeline;
+  createRenderPipeline(
+    descriptor: GPURenderPipelineDescriptor,
+  ): GPURenderPipeline;
+  createComputePipelineAsync(
+    descriptor: GPUComputePipelineDescriptor,
+  ): Promise<GPUComputePipeline>;
+  createRenderPipelineAsync(
+    descriptor: GPURenderPipelineDescriptor,
+  ): Promise<GPURenderPipeline>;
+
+  createCommandEncoder(
+    descriptor?: GPUCommandEncoderDescriptor,
+  ): GPUCommandEncoder;
+  createRenderBundleEncoder(
+    descriptor: GPURenderBundleEncoderDescriptor,
+  ): GPURenderBundleEncoder;
+
+  createQuerySet(descriptor: GPUQuerySetDescriptor): GPUQuerySet;
+}
+
+declare class GPUBuffer implements GPUObjectBase {
+  label: string | null;
+
+  mapAsync(
+    mode: GPUMapModeFlags,
+    offset?: number,
+    size?: number,
+  ): Promise<undefined>;
+  getMappedRange(offset?: number, size?: number): ArrayBuffer;
+  unmap(): undefined;
+
+  destroy(): undefined;
+}
+
+declare interface GPUBufferDescriptor extends GPUObjectDescriptorBase {
+  size: number;
+  usage: GPUBufferUsageFlags;
+  mappedAtCreation?: boolean;
+}
+
+declare type GPUBufferUsageFlags = number;
+declare class GPUBufferUsage {
+  static MAP_READ: 0x0001;
+  static MAP_WRITE: 0x0002;
+  static COPY_SRC: 0x0004;
+  static COPY_DST: 0x0008;
+  static INDEX: 0x0010;
+  static VERTEX: 0x0020;
+  static UNIFORM: 0x0040;
+  static STORAGE: 0x0080;
+  static INDIRECT: 0x0100;
+  static QUERY_RESOLVE: 0x0200;
+}
+
+declare type GPUMapModeFlags = number;
+declare class GPUMapMode {
+  static READ: 0x0001;
+  static WRITE: 0x0002;
+}
+
+declare class GPUTexture implements GPUObjectBase {
+  label: string | null;
+
+  createView(descriptor?: GPUTextureViewDescriptor): GPUTextureView;
+  destroy(): undefined;
+}
+
+declare interface GPUTextureDescriptor extends GPUObjectDescriptorBase {
+  size: GPUExtent3D;
+  mipLevelCount?: number;
+  sampleCount?: number;
+  dimension?: GPUTextureDimension;
+  format: GPUTextureFormat;
+  usage: GPUTextureUsageFlags;
+}
+
+declare type GPUTextureDimension = "1d" | "2d" | "3d";
+
+declare type GPUTextureUsageFlags = number;
+declare class GPUTextureUsage {
+  static COPY_SRC: 0x01;
+  static COPY_DST: 0x02;
+  static SAMPLED: 0x04;
+  static STORAGE: 0x08;
+  static RENDER_ATTACHMENT: 0x10;
+}
+
+declare class GPUTextureView implements GPUObjectBase {
+  label: string | null;
+}
+
+declare interface GPUTextureViewDescriptor extends GPUObjectDescriptorBase {
+  format?: GPUTextureFormat;
+  dimension?: GPUTextureViewDimension;
+  aspect?: GPUTextureAspect;
+  baseMipLevel?: number;
+  mipLevelCount?: number;
+  baseArrayLayer?: number;
+  arrayLayerCount?: number;
+}
+
+declare type GPUTextureViewDimension =
+  | "1d"
+  | "2d"
+  | "2d-array"
+  | "cube"
+  | "cube-array"
+  | "3d";
+
+declare type GPUTextureAspect = "all" | "stencil-only" | "depth-only";
+
+declare type GPUTextureFormat =
+  | "r8unorm"
+  | "r8snorm"
+  | "r8uint"
+  | "r8sint"
+  | "r16uint"
+  | "r16sint"
+  | "r16float"
+  | "rg8unorm"
+  | "rg8snorm"
+  | "rg8uint"
+  | "rg8sint"
+  | "r32uint"
+  | "r32sint"
+  | "r32float"
+  | "rg16uint"
+  | "rg16sint"
+  | "rg16float"
+  | "rgba8unorm"
+  | "rgba8unorm-srgb"
+  | "rgba8snorm"
+  | "rgba8uint"
+  | "rgba8sint"
+  | "bgra8unorm"
+  | "bgra8unorm-srgb"
+  | "rgb9e5ufloat"
+  | "rgb10a2unorm"
+  | "rg11b10ufloat"
+  | "rg32uint"
+  | "rg32sint"
+  | "rg32float"
+  | "rgba16uint"
+  | "rgba16sint"
+  | "rgba16float"
+  | "rgba32uint"
+  | "rgba32sint"
+  | "rgba32float"
+  | "stencil8"
+  | "depth16unorm"
+  | "depth24plus"
+  | "depth24plus-stencil8"
+  | "depth32float"
+  | "bc1-rgba-unorm"
+  | "bc1-rgba-unorm-srgb"
+  | "bc2-rgba-unorm"
+  | "bc2-rgba-unorm-srgb"
+  | "bc3-rgba-unorm"
+  | "bc3-rgba-unorm-srgb"
+  | "bc4-r-unorm"
+  | "bc4-r-snorm"
+  | "bc5-rg-unorm"
+  | "bc5-rg-snorm"
+  | "bc6h-rgb-ufloat"
+  | "bc6h-rgb-float"
+  | "bc7-rgba-unorm"
+  | "bc7-rgba-unorm-srgb"
+  | "depth24unorm-stencil8"
+  | "depth32float-stencil8";
+
+declare class GPUSampler implements GPUObjectBase {
+  label: string | null;
+}
+
+declare interface GPUSamplerDescriptor extends GPUObjectDescriptorBase {
+  addressModeU?: GPUAddressMode;
+  addressModeV?: GPUAddressMode;
+  addressModeW?: GPUAddressMode;
+  magFilter?: GPUFilterMode;
+  minFilter?: GPUFilterMode;
+  mipmapFilter?: GPUFilterMode;
+  lodMinClamp?: number;
+  lodMaxClamp?: number;
+  compare?: GPUCompareFunction;
+  maxAnisotropy?: number;
+}
+
+declare type GPUAddressMode = "clamp-to-edge" | "repeat" | "mirror-repeat";
+
+declare type GPUFilterMode = "nearest" | "linear";
+
+declare type GPUCompareFunction =
+  | "never"
+  | "less"
+  | "equal"
+  | "less-equal"
+  | "greater"
+  | "not-equal"
+  | "greater-equal"
+  | "always";
+
+declare class GPUBindGroupLayout implements GPUObjectBase {
+  label: string | null;
+}
+
+declare interface GPUBindGroupLayoutDescriptor extends GPUObjectDescriptorBase {
+  entries: GPUBindGroupLayoutEntry[];
+}
+
+declare interface GPUBindGroupLayoutEntry {
+  binding: number;
+  visibility: GPUShaderStageFlags;
+
+  buffer?: GPUBufferBindingLayout;
+  sampler?: GPUSamplerBindingLayout;
+  texture?: GPUTextureBindingLayout;
+  storageTexture?: GPUStorageTextureBindingLayout;
+}
+
+declare type GPUShaderStageFlags = number;
+declare class GPUShaderStage {
+  static VERTEX: 0x1;
+  static FRAGMENT: 0x2;
+  static COMPUTE: 0x4;
+}
+
+declare interface GPUBufferBindingLayout {
+  type?: GPUBufferBindingType;
+  hasDynamicOffset?: boolean;
+  minBindingSize?: number;
+}
+
+declare type GPUBufferBindingType = "uniform" | "storage" | "read-only-storage";
+
+declare interface GPUSamplerBindingLayout {
+  type?: GPUSamplerBindingType;
+}
+
+declare type GPUSamplerBindingType =
+  | "filtering"
+  | "non-filtering"
+  | "comparison";
+
+declare interface GPUTextureBindingLayout {
+  sampleType?: GPUTextureSampleType;
+  viewDimension?: GPUTextureViewDimension;
+  multisampled?: boolean;
+}
+
+declare type GPUTextureSampleType =
+  | "float"
+  | "unfilterable-float"
+  | "depth"
+  | "sint"
+  | "uint";
+
+declare interface GPUTextureBindingLayout {
+  sampleType?: GPUTextureSampleType;
+  viewDimension?: GPUTextureViewDimension;
+  multisampled?: boolean;
+}
+
+declare type GPUStorageTextureAccess = "read-only" | "write-only";
+
+declare interface GPUStorageTextureBindingLayout {
+  access: GPUStorageTextureAccess;
+  format: GPUTextureFormat;
+  viewDimension?: GPUTextureViewDimension;
+}
+
+declare class GPUBindGroup implements GPUObjectBase {
+  label: string | null;
+}
+
+declare interface GPUBindGroupDescriptor extends GPUObjectDescriptorBase {
+  layout: GPUBindGroupLayout;
+  entries: GPUBindGroupEntry[];
+}
+
+declare type GPUBindingResource =
+  | GPUSampler
+  | GPUTextureView
+  | GPUBufferBinding;
+
+declare interface GPUBindGroupEntry {
+  binding: number;
+  resource: GPUBindingResource;
+}
+
+declare interface GPUBufferBinding {
+  buffer: GPUBuffer;
+  offset?: number;
+  size?: number;
+}
+
+declare class GPUPipelineLayout implements GPUObjectBase {
+  label: string | null;
+}
+
+declare interface GPUPipelineLayoutDescriptor extends GPUObjectDescriptorBase {
+  bindGroupLayouts: GPUBindGroupLayout[];
+}
+
+declare type GPUCompilationMessageType = "error" | "warning" | "info";
+
+declare interface GPUCompilationMessage {
+  readonly message: string;
+  readonly type: GPUCompilationMessageType;
+  readonly lineNum: number;
+  readonly linePos: number;
+}
+
+declare interface GPUCompilationInfo {
+  readonly messages: ReadonlyArray<GPUCompilationMessage>;
+}
+
+declare class GPUShaderModule implements GPUObjectBase {
+  label: string | null;
+
+  compilationInfo(): Promise<GPUCompilationInfo>;
+}
+
+declare interface GPUShaderModuleDescriptor extends GPUObjectDescriptorBase {
+  code: string;
+  sourceMap?: any;
+}
+
+declare interface GPUPipelineDescriptorBase extends GPUObjectDescriptorBase {
+  layout?: GPUPipelineLayout;
+}
+
+declare interface GPUPipelineBase {
+  getBindGroupLayout(index: number): GPUBindGroupLayout;
+}
+
+declare interface GPUProgrammableStage {
+  module: GPUShaderModule;
+  entryPoint: string;
+}
+
+declare class GPUComputePipeline implements GPUObjectBase, GPUPipelineBase {
+  label: string | null;
+
+  getBindGroupLayout(index: number): GPUBindGroupLayout;
+}
+
+declare interface GPUComputePipelineDescriptor
+  extends GPUPipelineDescriptorBase {
+  compute: GPUProgrammableStage;
+}
+
+declare class GPURenderPipeline implements GPUObjectBase, GPUPipelineBase {
+  label: string | null;
+
+  getBindGroupLayout(index: number): GPUBindGroupLayout;
+}
+
+declare interface GPURenderPipelineDescriptor
+  extends GPUPipelineDescriptorBase {
+  vertex: GPUVertexState;
+  primitive?: GPUPrimitiveState;
+  depthStencil?: GPUDepthStencilState;
+  multisample?: GPUMultisampleState;
+  fragment?: GPUFragmentState;
+}
+
+declare type GPUPrimitiveTopology =
+  | "point-list"
+  | "line-list"
+  | "line-strip"
+  | "triangle-list"
+  | "triangle-strip";
+
+declare interface GPUPrimitiveState {
+  topology?: GPUPrimitiveTopology;
+  stripIndexFormat?: GPUIndexFormat;
+  frontFace?: GPUFrontFace;
+  cullMode?: GPUCullMode;
+}
+
+declare type GPUFrontFace = "ccw" | "cw";
+
+declare type GPUCullMode = "none" | "front" | "back";
+
+declare interface GPUMultisampleState {
+  count?: number;
+  mask?: number;
+  alphaToCoverageEnabled?: boolean;
+}
+
+declare interface GPUFragmentState extends GPUProgrammableStage {
+  targets: GPUColorTargetState[];
+}
+
+declare interface GPUColorTargetState {
+  format: GPUTextureFormat;
+
+  blend?: GPUBlendState;
+  writeMask?: GPUColorWriteFlags;
+}
+
+declare interface GPUBlendState {
+  color: GPUBlendComponent;
+  alpha: GPUBlendComponent;
+}
+
+declare type GPUColorWriteFlags = number;
+declare class GPUColorWrite {
+  static RED: 0x1;
+  static GREEN: 0x2;
+  static BLUE: 0x4;
+  static ALPHA: 0x8;
+  static ALL: 0xF;
+}
+
+declare interface GPUBlendComponent {
+  srcFactor: GPUBlendFactor;
+  dstFactor: GPUBlendFactor;
+  operation: GPUBlendOperation;
+}
+
+declare type GPUBlendFactor =
+  | "zero"
+  | "one"
+  | "src-color"
+  | "one-minus-src-color"
+  | "src-alpha"
+  | "one-minus-src-alpha"
+  | "dst-color"
+  | "one-minus-dst-color"
+  | "dst-alpha"
+  | "one-minus-dst-alpha"
+  | "src-alpha-saturated"
+  | "blend-color"
+  | "one-minus-blend-color";
+
+declare type GPUBlendOperation =
+  | "add"
+  | "subtract"
+  | "reverse-subtract"
+  | "min"
+  | "max";
+
+declare interface GPUDepthStencilState {
+  format: GPUTextureFormat;
+
+  depthWriteEnabled?: boolean;
+  depthCompare?: GPUCompareFunction;
+
+  stencilFront?: GPUStencilFaceState;
+  stencilBack?: GPUStencilFaceState;
+
+  stencilReadMask?: number;
+  stencilWriteMask?: number;
+
+  depthBias?: number;
+  depthBiasSlopeScale?: number;
+  depthBiasClamp?: number;
+
+  clampDepth?: boolean;
+}
+
+declare interface GPUStencilFaceState {
+  compare?: GPUCompareFunction;
+  failOp?: GPUStencilOperation;
+  depthFailOp?: GPUStencilOperation;
+  passOp?: GPUStencilOperation;
+}
+
+declare type GPUStencilOperation =
+  | "keep"
+  | "zero"
+  | "replace"
+  | "invert"
+  | "increment-clamp"
+  | "decrement-clamp"
+  | "increment-wrap"
+  | "decrement-wrap";
+
+declare type GPUIndexFormat = "uint16" | "uint32";
+
+declare type GPUVertexFormat =
+  | "uchar2"
+  | "uchar4"
+  | "char2"
+  | "char4"
+  | "uchar2norm"
+  | "uchar4norm"
+  | "char2norm"
+  | "char4norm"
+  | "ushort2"
+  | "ushort4"
+  | "short2"
+  | "short4"
+  | "ushort2norm"
+  | "ushort4norm"
+  | "short2norm"
+  | "short4norm"
+  | "half2"
+  | "half4"
+  | "float"
+  | "float2"
+  | "float3"
+  | "float4"
+  | "uint"
+  | "uint2"
+  | "uint3"
+  | "uint4"
+  | "int"
+  | "int2"
+  | "int3"
+  | "int4";
+
+declare type GPUInputStepMode = "vertex" | "instance";
+
+declare interface GPUVertexState extends GPUProgrammableStage {
+  buffers?: (GPUVertexBufferLayout | null)[];
+}
+
+declare interface GPUVertexBufferLayout {
+  arrayStride: number;
+  stepMode?: GPUInputStepMode;
+  attributes: GPUVertexAttribute[];
+}
+
+declare interface GPUVertexAttribute {
+  format: GPUVertexFormat;
+  offset: number;
+
+  shaderLocation: number;
+}
+
+declare class GPUCommandBuffer implements GPUObjectBase {
+  label: string | null;
+
+  readonly executionTime: Promise<number>;
+}
+
+declare interface GPUCommandBufferDescriptor extends GPUObjectDescriptorBase {}
+
+declare class GPUCommandEncoder implements GPUObjectBase {
+  label: string | null;
+
+  beginRenderPass(descriptor: GPURenderPassDescriptor): GPURenderPassEncoder;
+  beginComputePass(
+    descriptor?: GPUComputePassDescriptor,
+  ): GPUComputePassEncoder;
+
+  copyBufferToBuffer(
+    source: GPUBuffer,
+    sourceOffset: number,
+    destination: GPUBuffer,
+    destinationOffset: number,
+    size: number,
+  ): undefined;
+
+  copyBufferToTexture(
+    source: GPUImageCopyBuffer,
+    destination: GPUImageCopyTexture,
+    copySize: GPUExtent3D,
+  ): undefined;
+
+  copyTextureToBuffer(
+    source: GPUImageCopyTexture,
+    destination: GPUImageCopyBuffer,
+    copySize: GPUExtent3D,
+  ): undefined;
+
+  copyTextureToTexture(
+    source: GPUImageCopyTexture,
+    destination: GPUImageCopyTexture,
+    copySize: GPUExtent3D,
+  ): undefined;
+
+  pushDebugGroup(groupLabel: string): undefined;
+  popDebugGroup(): undefined;
+  insertDebugMarker(markerLabel: string): undefined;
+
+  writeTimestamp(querySet: GPUQuerySet, queryIndex: number): undefined;
+
+  resolveQuerySet(
+    querySet: GPUQuerySet,
+    firstQuery: number,
+    queryCount: number,
+    destination: GPUBuffer,
+    destinationOffset: number,
+  ): undefined;
+
+  finish(descriptor?: GPUCommandBufferDescriptor): GPUCommandBuffer;
+}
+
+declare interface GPUCommandEncoderDescriptor extends GPUObjectDescriptorBase {
+  measureExecutionTime?: boolean;
+}
+
+declare interface GPUImageDataLayout {
+  offset?: number;
+  bytesPerRow?: number;
+  rowsPerImage?: number;
+}
+
+declare interface GPUImageCopyBuffer extends GPUImageDataLayout {
+  buffer: GPUBuffer;
+}
+
+declare interface GPUImageCopyTexture {
+  texture: GPUTexture;
+  mipLevel?: number;
+  origin?: GPUOrigin3D;
+  aspect?: GPUTextureAspect;
+}
+
+interface GPUProgrammablePassEncoder {
+  setBindGroup(
+    index: number,
+    bindGroup: GPUBindGroup,
+    dynamicOffsets?: number[],
+  ): undefined;
+
+  setBindGroup(
+    index: number,
+    bindGroup: GPUBindGroup,
+    dynamicOffsetsData: Uint32Array,
+    dynamicOffsetsDataStart: number,
+    dynamicOffsetsDataLength: number,
+  ): undefined;
+
+  pushDebugGroup(groupLabel: string): undefined;
+  popDebugGroup(): undefined;
+  insertDebugMarker(markerLabel: string): undefined;
+}
+
+declare class GPUComputePassEncoder
+  implements GPUObjectBase, GPUProgrammablePassEncoder {
+  label: string | null;
+  setBindGroup(
+    index: number,
+    bindGroup: GPUBindGroup,
+    dynamicOffsets?: number[],
+  ): undefined;
+  setBindGroup(
+    index: number,
+    bindGroup: GPUBindGroup,
+    dynamicOffsetsData: Uint32Array,
+    dynamicOffsetsDataStart: number,
+    dynamicOffsetsDataLength: number,
+  ): undefined;
+  pushDebugGroup(groupLabel: string): undefined;
+  popDebugGroup(): undefined;
+  insertDebugMarker(markerLabel: string): undefined;
+  setPipeline(pipeline: GPUComputePipeline): undefined;
+  dispatch(x: number, y?: number, z?: number): undefined;
+  dispatchIndirect(
+    indirectBuffer: GPUBuffer,
+    indirectOffset: number,
+  ): undefined;
+
+  beginPipelineStatisticsQuery(
+    querySet: GPUQuerySet,
+    queryIndex: number,
+  ): undefined;
+  endPipelineStatisticsQuery(): undefined;
+
+  writeTimestamp(querySet: GPUQuerySet, queryIndex: number): undefined;
+
+  endPass(): undefined;
+}
+
+declare interface GPUComputePassDescriptor extends GPUObjectDescriptorBase {}
+
+interface GPURenderEncoderBase {
+  setPipeline(pipeline: GPURenderPipeline): undefined;
+
+  setIndexBuffer(
+    buffer: GPUBuffer,
+    indexFormat: GPUIndexFormat,
+    offset?: number,
+    size?: number,
+  ): undefined;
+  setVertexBuffer(
+    slot: number,
+    buffer: GPUBuffer,
+    offset?: number,
+    size?: number,
+  ): undefined;
+
+  draw(
+    vertexCount: number,
+    instanceCount?: number,
+    firstVertex?: number,
+    firstInstance?: number,
+  ): undefined;
+  drawIndexed(
+    indexCount: number,
+    instanceCount?: number,
+    firstIndex?: number,
+    baseVertex?: number,
+    firstInstance?: number,
+  ): undefined;
+
+  drawIndirect(indirectBuffer: GPUBuffer, indirectOffset: number): undefined;
+  drawIndexedIndirect(
+    indirectBuffer: GPUBuffer,
+    indirectOffset: number,
+  ): undefined;
+}
+
+declare class GPURenderPassEncoder
+  implements GPUObjectBase, GPUProgrammablePassEncoder, GPURenderEncoderBase {
+  label: string | null;
+  setBindGroup(
+    index: number,
+    bindGroup: GPUBindGroup,
+    dynamicOffsets?: number[],
+  ): undefined;
+  setBindGroup(
+    index: number,
+    bindGroup: GPUBindGroup,
+    dynamicOffsetsData: Uint32Array,
+    dynamicOffsetsDataStart: number,
+    dynamicOffsetsDataLength: number,
+  ): undefined;
+  pushDebugGroup(groupLabel: string): undefined;
+  popDebugGroup(): undefined;
+  insertDebugMarker(markerLabel: string): undefined;
+  setPipeline(pipeline: GPURenderPipeline): undefined;
+  setIndexBuffer(
+    buffer: GPUBuffer,
+    indexFormat: GPUIndexFormat,
+    offset?: number,
+    size?: number,
+  ): undefined;
+  setVertexBuffer(
+    slot: number,
+    buffer: GPUBuffer,
+    offset?: number,
+    size?: number,
+  ): undefined;
+  draw(
+    vertexCount: number,
+    instanceCount?: number,
+    firstVertex?: number,
+    firstInstance?: number,
+  ): undefined;
+  drawIndexed(
+    indexCount: number,
+    instanceCount?: number,
+    firstIndex?: number,
+    baseVertex?: number,
+    firstInstance?: number,
+  ): undefined;
+  drawIndirect(indirectBuffer: GPUBuffer, indirectOffset: number): undefined;
+  drawIndexedIndirect(
+    indirectBuffer: GPUBuffer,
+    indirectOffset: number,
+  ): undefined;
+
+  setViewport(
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    minDepth: number,
+    maxDepth: number,
+  ): undefined;
+
+  setScissorRect(
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+  ): undefined;
+
+  setBlendColor(color: GPUColor): undefined;
+  setStencilReference(reference: number): undefined;
+
+  beginOcclusionQuery(queryIndex: number): undefined;
+  endOcclusionQuery(): undefined;
+
+  beginPipelineStatisticsQuery(
+    querySet: GPUQuerySet,
+    queryIndex: number,
+  ): undefined;
+  endPipelineStatisticsQuery(): undefined;
+
+  writeTimestamp(querySet: GPUQuerySet, queryIndex: number): undefined;
+
+  executeBundles(bundles: GPURenderBundle[]): undefined;
+  endPass(): undefined;
+}
+
+declare interface GPURenderPassDescriptor extends GPUObjectDescriptorBase {
+  colorAttachments: GPURenderPassColorAttachment[];
+  depthStencilAttachment?: GPURenderPassDepthStencilAttachment;
+  occlusionQuerySet?: GPUQuerySet;
+}
+
+declare interface GPURenderPassColorAttachment {
+  view: GPUTextureView;
+  resolveTarget?: GPUTextureView;
+
+  loadValue: GPULoadOp | GPUColor;
+  storeOp?: GPUStoreOp;
+}
+
+declare interface GPURenderPassDepthStencilAttachment {
+  view: GPUTextureView;
+
+  depthLoadValue: GPULoadOp | number;
+  depthStoreOp: GPUStoreOp;
+  depthReadOnly?: boolean;
+
+  stencilLoadValue: GPULoadOp | number;
+  stencilStoreOp: GPUStoreOp;
+  stencilReadOnly?: boolean;
+}
+
+declare type GPULoadOp = "load";
+
+declare type GPUStoreOp = "store" | "clear";
+
+declare class GPURenderBundle implements GPUObjectBase {
+  label: string | null;
+}
+
+declare interface GPURenderBundleDescriptor extends GPUObjectDescriptorBase {}
+
+declare class GPURenderBundleEncoder
+  implements GPUObjectBase, GPUProgrammablePassEncoder, GPURenderEncoderBase {
+  label: string | null;
+  draw(
+    vertexCount: number,
+    instanceCount?: number,
+    firstVertex?: number,
+    firstInstance?: number,
+  ): undefined;
+  drawIndexed(
+    indexCount: number,
+    instanceCount?: number,
+    firstIndex?: number,
+    baseVertex?: number,
+    firstInstance?: number,
+  ): undefined;
+  drawIndexedIndirect(
+    indirectBuffer: GPUBuffer,
+    indirectOffset: number,
+  ): undefined;
+  drawIndirect(indirectBuffer: GPUBuffer, indirectOffset: number): undefined;
+  insertDebugMarker(markerLabel: string): undefined;
+  popDebugGroup(): undefined;
+  pushDebugGroup(groupLabel: string): undefined;
+  setBindGroup(
+    index: number,
+    bindGroup: GPUBindGroup,
+    dynamicOffsets?: number[],
+  ): undefined;
+  setBindGroup(
+    index: number,
+    bindGroup: GPUBindGroup,
+    dynamicOffsetsData: Uint32Array,
+    dynamicOffsetsDataStart: number,
+    dynamicOffsetsDataLength: number,
+  ): undefined;
+  setIndexBuffer(
+    buffer: GPUBuffer,
+    indexFormat: GPUIndexFormat,
+    offset?: number,
+    size?: number,
+  ): undefined;
+  setPipeline(pipeline: GPURenderPipeline): undefined;
+  setVertexBuffer(
+    slot: number,
+    buffer: GPUBuffer,
+    offset?: number,
+    size?: number,
+  ): undefined;
+
+  finish(descriptor?: GPURenderBundleDescriptor): GPURenderBundle;
+}
+
+declare interface GPURenderBundleEncoderDescriptor
+  extends GPUObjectDescriptorBase {
+  colorFormats: GPUTextureFormat[];
+  depthStencilFormat?: GPUTextureFormat;
+  sampleCount?: number;
+}
+
+declare class GPUQueue implements GPUObjectBase {
+  label: string | null;
+
+  submit(commandBuffers: GPUCommandBuffer[]): undefined;
+
+  onSubmittedWorkDone(): Promise<undefined>;
+
+  writeBuffer(
+    buffer: GPUBuffer,
+    bufferOffset: number,
+    data: BufferSource,
+    dataOffset?: number,
+    size?: number,
+  ): undefined;
+
+  writeTexture(
+    destination: GPUImageCopyTexture,
+    data: BufferSource,
+    dataLayout: GPUImageDataLayout,
+    size: GPUExtent3D,
+  ): undefined;
+}
+
+declare class GPUQuerySet implements GPUObjectBase {
+  label: string | null;
+
+  destroy(): undefined;
+}
+
+declare interface GPUQuerySetDescriptor extends GPUObjectDescriptorBase {
+  type: GPUQueryType;
+  count: number;
+  pipelineStatistics?: GPUPipelineStatisticName[];
+}
+
+declare type GPUQueryType = "occlusion" | "pipeline-statistics" | "timestamp";
+
+declare type GPUPipelineStatisticName =
+  | "vertex-shader-invocations"
+  | "clipper-invocations"
+  | "clipper-primitives-out"
+  | "fragment-shader-invocations"
+  | "compute-shader-invocations";
+
+declare type GPUDeviceLostReason = "destroyed";
+
+declare interface GPUDeviceLostInfo {
+  readonly reason: GPUDeviceLostReason | undefined;
+  readonly message: string;
+}
+
+declare type GPUErrorFilter = "out-of-memory" | "validation";
+
+declare class GPUOutOfMemoryError {
+  constructor();
+}
+
+declare class GPUValidationError {
+  constructor(message: string);
+  readonly message: string;
+}
+
+declare type GPUError = GPUOutOfMemoryError | GPUValidationError;
+
+declare class GPUUncapturedErrorEvent extends Event {
+  constructor(
+    type: string,
+    gpuUncapturedErrorEventInitDict: GPUUncapturedErrorEventInit,
+  );
+  readonly error: GPUError;
+}
+
+declare interface GPUUncapturedErrorEventInit extends EventInit {
+  error?: GPUError;
+}
+
+declare interface GPUColorDict {
+  r: number;
+  g: number;
+  b: number;
+  a: number;
+}
+
+declare type GPUColor = number[] | GPUColorDict;
+
+declare interface GPUOrigin3DDict {
+  x?: number;
+  y?: number;
+  z?: number;
+}
+
+declare type GPUOrigin3D = number[] | GPUOrigin3DDict;
+
+declare interface GPUExtent3DDict {
+  width?: number;
+  height?: number;
+  depth?: number;
+}
+
+declare type GPUExtent3D = number[] | GPUExtent3DDict;
+
+// Copyright 2018-2021 the Deno authors. All rights reserved. MIT license.
+
 // deno-lint-ignore-file no-explicit-any
 
 /// <reference no-default-lib="true" />
@@ -3276,6 +4793,7 @@ type BinaryType = "arraybuffer" | "blob";
 /// <reference lib="deno.web" />
 /// <reference lib="deno.fetch" />
 /// <reference lib="deno.websocket" />
+/// <reference lib="deno.crypto" />
 
 declare namespace WebAssembly {
   /**
@@ -3611,8 +5129,6 @@ interface VoidFunction {
  */
 declare function queueMicrotask(func: VoidFunction): void;
 
-declare var crypto: Crypto;
-
 /** Registers an event listener in the global scope, which will be called
  * synchronously whenever the event `type` is dispatched.
  *
@@ -3684,195 +5200,6 @@ declare interface Console {
 
 declare var console: Console;
 
-declare interface Crypto {
-  readonly subtle: null;
-  getRandomValues<
-    T extends
-      | Int8Array
-      | Int16Array
-      | Int32Array
-      | Uint8Array
-      | Uint16Array
-      | Uint32Array
-      | Uint8ClampedArray
-      | Float32Array
-      | Float64Array
-      | DataView
-      | null,
-  >(
-    array: T,
-  ): T;
-}
-
-declare class URLSearchParams {
-  constructor(
-    init?: string[][] | Record<string, string> | string | URLSearchParams,
-  );
-  static toString(): string;
-
-  /** Appends a specified key/value pair as a new search parameter.
-   *
-   * ```ts
-   * let searchParams = new URLSearchParams();
-   * searchParams.append('name', 'first');
-   * searchParams.append('name', 'second');
-   * ```
-   */
-  append(name: string, value: string): void;
-
-  /** Deletes the given search parameter and its associated value,
-   * from the list of all search parameters.
-   *
-   * ```ts
-   * let searchParams = new URLSearchParams([['name', 'value']]);
-   * searchParams.delete('name');
-   * ```
-   */
-  delete(name: string): void;
-
-  /** Returns all the values associated with a given search parameter
-   * as an array.
-   *
-   * ```ts
-   * searchParams.getAll('name');
-   * ```
-   */
-  getAll(name: string): string[];
-
-  /** Returns the first value associated to the given search parameter.
-   *
-   * ```ts
-   * searchParams.get('name');
-   * ```
-   */
-  get(name: string): string | null;
-
-  /** Returns a Boolean that indicates whether a parameter with the
-   * specified name exists.
-   *
-   * ```ts
-   * searchParams.has('name');
-   * ```
-   */
-  has(name: string): boolean;
-
-  /** Sets the value associated with a given search parameter to the
-   * given value. If there were several matching values, this method
-   * deletes the others. If the search parameter doesn't exist, this
-   * method creates it.
-   *
-   * ```ts
-   * searchParams.set('name', 'value');
-   * ```
-   */
-  set(name: string, value: string): void;
-
-  /** Sort all key/value pairs contained in this object in place and
-   * return undefined. The sort order is according to Unicode code
-   * points of the keys.
-   *
-   * ```ts
-   * searchParams.sort();
-   * ```
-   */
-  sort(): void;
-
-  /** Calls a function for each element contained in this object in
-   * place and return undefined. Optionally accepts an object to use
-   * as this when executing callback as second argument.
-   *
-   * ```ts
-   * const params = new URLSearchParams([["a", "b"], ["c", "d"]]);
-   * params.forEach((value, key, parent) => {
-   *   console.log(value, key, parent);
-   * });
-   * ```
-   *
-   */
-  forEach(
-    callbackfn: (value: string, key: string, parent: this) => void,
-    thisArg?: any,
-  ): void;
-
-  /** Returns an iterator allowing to go through all keys contained
-   * in this object.
-   *
-   * ```ts
-   * const params = new URLSearchParams([["a", "b"], ["c", "d"]]);
-   * for (const key of params.keys()) {
-   *   console.log(key);
-   * }
-   * ```
-   */
-  keys(): IterableIterator<string>;
-
-  /** Returns an iterator allowing to go through all values contained
-   * in this object.
-   *
-   * ```ts
-   * const params = new URLSearchParams([["a", "b"], ["c", "d"]]);
-   * for (const value of params.values()) {
-   *   console.log(value);
-   * }
-   * ```
-   */
-  values(): IterableIterator<string>;
-
-  /** Returns an iterator allowing to go through all key/value
-   * pairs contained in this object.
-   *
-   * ```ts
-   * const params = new URLSearchParams([["a", "b"], ["c", "d"]]);
-   * for (const [key, value] of params.entries()) {
-   *   console.log(key, value);
-   * }
-   * ```
-   */
-  entries(): IterableIterator<[string, string]>;
-
-  /** Returns an iterator allowing to go through all key/value
-   * pairs contained in this object.
-   *
-   * ```ts
-   * const params = new URLSearchParams([["a", "b"], ["c", "d"]]);
-   * for (const [key, value] of params) {
-   *   console.log(key, value);
-   * }
-   * ```
-   */
-  [Symbol.iterator](): IterableIterator<[string, string]>;
-
-  /** Returns a query string suitable for use in a URL.
-   *
-   * ```ts
-   * searchParams.toString();
-   * ```
-   */
-  toString(): string;
-}
-
-/** The URL┬áinterface represents an object providing static methods used for creating object URLs. */
-declare class URL {
-  constructor(url: string, base?: string | URL);
-  createObjectURL(object: any): string;
-  revokeObjectURL(url: string): void;
-
-  hash: string;
-  host: string;
-  hostname: string;
-  href: string;
-  toString(): string;
-  readonly origin: string;
-  password: string;
-  pathname: string;
-  port: string;
-  protocol: string;
-  search: string;
-  readonly searchParams: URLSearchParams;
-  username: string;
-  toJSON(): string;
-}
-
 interface MessageEventInit<T = any> extends EventInit {
   data?: T;
   origin?: string;
@@ -3924,83 +5251,6 @@ interface WorkerEventMap extends AbstractWorkerEventMap {
 interface WorkerOptions {
   type?: "classic" | "module";
   name?: string;
-  /** UNSTABLE: New API.
-   *
-   * Set deno.namespace to `true` to make `Deno` namespace and all of its methods
-   * available to worker thread. The namespace is disabled by default.
-   *
-   * Configure deno.permissions options to change the level of access the worker will
-   * have. By default it will inherit the permissions of its parent thread. The permissions
-   * of a worker can't be extended beyond its parent's permissions reach.
-   * - "inherit" will take the permissions of the thread the worker is created in
-   * - You can disable/enable permissions all together by passing a boolean
-   * - You can provide a list of routes relative to the file the worker
-   *   is created in to limit the access of the worker (read/write permissions only)
-   *
-   * Example:
-   *
-   * ```ts
-   * // mod.ts
-   * const worker = new Worker(
-   *   new URL("deno_worker.ts", import.meta.url).href, {
-   *     type: "module",
-   *     deno: {
-   *       namespace: true,
-   *       permissions: {
-   *         read: true,
-   *       },
-   *     },
-   *   }
-   * );
-   * worker.postMessage({ cmd: "readFile", fileName: "./log.txt" });
-   *
-   * // deno_worker.ts
-   *
-   *
-   * self.onmessage = async function (e) {
-   *     const { cmd, fileName } = e.data;
-   *     if (cmd !== "readFile") {
-   *         throw new Error("Invalid command");
-   *     }
-   *     const buf = await Deno.readFile(fileName);
-   *     const fileContents = new TextDecoder().decode(buf);
-   *     console.log(fileContents);
-   * }
-   * ```
-   *
-   * // log.txt
-   * hello world
-   * hello world 2
-   *
-   * // run program
-   * $ deno run --allow-read mod.ts
-   * hello world
-   * hello world2
-   *
-   */
-  // TODO(Soremwar)
-  // `deno: true` is kept for backwards compatibility with the previous worker
-  // options implementation. Remove for 2.0.
-  deno?: true | {
-    namespace?: boolean;
-    /** Set to `"none"` to disable all the permissions in the worker. */
-    permissions?: "inherit" | "none" | {
-      env?: "inherit" | boolean;
-      hrtime?: "inherit" | boolean;
-      /** The format of the net access list must be `hostname[:port]`
-       * in order to be resolved.
-       *
-       * ```
-       * net: ["https://deno.land", "localhost:8080"],
-       * ```
-       * */
-      net?: "inherit" | boolean | string[];
-      plugin?: "inherit" | boolean;
-      read?: "inherit" | boolean | Array<string | URL>;
-      run?: "inherit" | boolean;
-      write?: "inherit" | boolean | Array<string | URL>;
-    };
-  };
 }
 
 declare class Worker extends EventTarget {
@@ -4160,6 +5410,7 @@ interface ErrorConstructor {
 /// <reference no-default-lib="true" />
 /// <reference lib="deno.ns" />
 /// <reference lib="deno.shared_globals" />
+/// <reference lib="deno.webgpu" />
 /// <reference lib="esnext" />
 
 declare class Window extends EventTarget {
@@ -4174,12 +5425,18 @@ declare class Window extends EventTarget {
   confirm: (message?: string) => boolean;
   prompt: (message?: string, defaultValue?: string) => string | null;
   Deno: typeof Deno;
+  navigator: Navigator;
 }
 
 declare var window: Window & typeof globalThis;
 declare var self: Window & typeof globalThis;
 declare var onload: ((this: Window, ev: Event) => any) | null;
 declare var onunload: ((this: Window, ev: Event) => any) | null;
+declare var navigator: Navigator;
+
+declare interface Navigator {
+  readonly gpu: GPU;
+}
 
 /**
  * Shows the given message and waits for the enter key pressed.
@@ -4302,28 +5559,6 @@ declare namespace Deno {
    */
   export function umask(mask?: number): number;
 
-  /** **UNSTABLE**: This API needs a security review.
-   *
-   * Synchronously creates `newpath` as a hard link to `oldpath`.
-   *
-   * ```ts
-   * Deno.linkSync("old/name", "new/name");
-   * ```
-   *
-   * Requires `allow-read` and `allow-write` permissions. */
-  export function linkSync(oldpath: string, newpath: string): void;
-
-  /** **UNSTABLE**: This API needs a security review.
-   *
-   * Creates `newpath` as a hard link to `oldpath`.
-   *
-   * ```ts
-   * await Deno.link("old/name", "new/name");
-   * ```
-   *
-   * Requires `allow-read` and `allow-write` permissions. */
-  export function link(oldpath: string, newpath: string): Promise<void>;
-
   /** **UNSTABLE**: New API, yet to be vetted.
    *
    * Gets the size of the console as columns/rows.
@@ -4338,46 +5573,6 @@ declare namespace Deno {
     columns: number;
     rows: number;
   };
-
-  export type SymlinkOptions = {
-    type: "file" | "dir";
-  };
-
-  /** **UNSTABLE**: This API needs a security review.
-   *
-   * Creates `newpath` as a symbolic link to `oldpath`.
-   *
-   * The options.type parameter can be set to `file` or `dir`. This argument is only
-   * available on Windows and ignored on other platforms.
-   *
-   * ```ts
-   * Deno.symlinkSync("old/name", "new/name");
-   * ```
-   *
-   * Requires `allow-write` permission. */
-  export function symlinkSync(
-    oldpath: string,
-    newpath: string,
-    options?: SymlinkOptions,
-  ): void;
-
-  /** **UNSTABLE**: This API needs a security review.
-   *
-   * Creates `newpath` as a symbolic link to `oldpath`.
-   *
-   * The options.type parameter can be set to `file` or `dir`. This argument is only
-   * available on Windows and ignored on other platforms.
-   *
-   * ```ts
-   * await Deno.symlink("old/name", "new/name");
-   * ```
-   *
-   * Requires `allow-write` permission. */
-  export function symlink(
-    oldpath: string,
-    newpath: string,
-    options?: SymlinkOptions,
-  ): Promise<void>;
 
   /** **Unstable**  There are questions around which permission this needs. And
    * maybe should be renamed (loadAverage?)
@@ -4540,7 +5735,7 @@ declare namespace Deno {
    * user friendly format.
    *
    * ```ts
-   * const [diagnostics, result] = Deno.compile("file_with_compile_issues.ts");
+   * const { diagnostics } = await Deno.emit("file_with_compile_issues.ts");
    * console.table(diagnostics);  // Prints raw diagnostic data
    * console.log(Deno.formatDiagnostics(diagnostics));  // User friendly output of diagnostics
    * ```
@@ -4779,8 +5974,10 @@ declare namespace Deno {
 
   interface EmitOptions {
     /** Indicate that the source code should be emitted to a single file
-     * JavaScript bundle that is an ES module (`"esm"`). */
-    bundle?: "esm";
+     * JavaScript bundle that is a single ES module (`"esm"`) or a single file
+     * self contained script we executes in an immediately invoked function
+     * when loaded (`"iife"`). */
+    bundle?: "esm" | "iife";
     /** If `true` then the sources will be typed checked, returning any
      * diagnostic errors in the result.  If `false` type checking will be
      * skipped.  Defaults to `true`.
@@ -5130,12 +6327,12 @@ declare namespace Deno {
 
   export interface ResolveDnsOptions {
     /** The name server to be used for lookups.
-    * If not specified, defaults to the system configuration e.g. `/etc/resolv.conf` on Unix. */
+     * If not specified, defaults to the system configuration e.g. `/etc/resolv.conf` on Unix. */
     nameServer?: {
       /** The IP address of the name server */
       ipAddr: string;
       /** The port number the query will be sent to.
-      * If not specified, defaults to 53. */
+       * If not specified, defaults to 53. */
       port?: number;
     };
   }
@@ -5350,119 +6547,6 @@ declare namespace Deno {
    * Requires `allow-run` permission. */
   export function kill(pid: number, signo: number): void;
 
-  /** The name of a "powerful feature" which needs permission.
-   *
-   * See: https://w3c.github.io/permissions/#permission-registry
-   *
-   * Note that the definition of `PermissionName` in the above spec is swapped
-   * out for a set of Deno permissions which are not web-compatible. */
-  export type PermissionName =
-    | "run"
-    | "read"
-    | "write"
-    | "net"
-    | "env"
-    | "plugin"
-    | "hrtime";
-
-  /** The current status of the permission.
-   *
-   * See: https://w3c.github.io/permissions/#status-of-a-permission */
-  export type PermissionState = "granted" | "denied" | "prompt";
-
-  export interface RunPermissionDescriptor {
-    name: "run";
-  }
-
-  export interface ReadPermissionDescriptor {
-    name: "read";
-    path?: string;
-  }
-
-  export interface WritePermissionDescriptor {
-    name: "write";
-    path?: string;
-  }
-
-  export interface NetPermissionDescriptor {
-    name: "net";
-    /** Optional host string of the form `"<hostname>[:<port>]"`. Examples:
-     *
-     *      "github.com"
-     *      "deno.land:8080"
-     */
-    host?: string;
-  }
-
-  export interface EnvPermissionDescriptor {
-    name: "env";
-  }
-
-  export interface PluginPermissionDescriptor {
-    name: "plugin";
-  }
-
-  export interface HrtimePermissionDescriptor {
-    name: "hrtime";
-  }
-
-  /** Permission descriptors which define a permission and can be queried,
-   * requested, or revoked.
-   *
-   * See: https://w3c.github.io/permissions/#permission-descriptor */
-  export type PermissionDescriptor =
-    | RunPermissionDescriptor
-    | ReadPermissionDescriptor
-    | WritePermissionDescriptor
-    | NetPermissionDescriptor
-    | EnvPermissionDescriptor
-    | PluginPermissionDescriptor
-    | HrtimePermissionDescriptor;
-
-  export class Permissions {
-    /** Resolves to the current status of a permission.
-     *
-     * ```ts
-     * const status = await Deno.permissions.query({ name: "read", path: "/etc" });
-     * if (status.state === "granted") {
-     *   data = await Deno.readFile("/etc/passwd");
-     * }
-     * ```
-     */
-    query(desc: PermissionDescriptor): Promise<PermissionStatus>;
-
-    /** Revokes a permission, and resolves to the state of the permission.
-     *
-     *       const status = await Deno.permissions.revoke({ name: "run" });
-     *       assert(status.state !== "granted")
-     */
-    revoke(desc: PermissionDescriptor): Promise<PermissionStatus>;
-
-    /** Requests the permission, and resolves to the state of the permission.
-     *
-     * ```ts
-     * const status = await Deno.permissions.request({ name: "env" });
-     * if (status.state === "granted") {
-     *   console.log("'env' permission is granted.");
-     * } else {
-     *   console.log("'env' permission is denied.");
-     * }
-     * ```
-     */
-    request(desc: PermissionDescriptor): Promise<PermissionStatus>;
-  }
-
-  /** **UNSTABLE**: Under consideration to move to `navigator.permissions` to
-   * match web API. It could look like `navigator.permissions.query({ name: Deno.symbols.read })`.
-   */
-  export const permissions: Permissions;
-
-  /** see: https://w3c.github.io/permissions/#permissionstatus */
-  export class PermissionStatus {
-    state: PermissionState;
-    constructor();
-  }
-
   /**  **UNSTABLE**: New API, yet to be vetted.  Additional consideration is still
    * necessary around the permissions required.
    *
@@ -5622,9 +6706,105 @@ declare namespace Deno {
    * ```
    */
   export function sleepSync(millis: number): Promise<void>;
+
+  export interface Metrics extends OpMetrics {
+    ops: Record<string, OpMetrics>;
+  }
+
+  export interface OpMetrics {
+    opsDispatched: number;
+    opsDispatchedSync: number;
+    opsDispatchedAsync: number;
+    opsDispatchedAsyncUnref: number;
+    opsCompleted: number;
+    opsCompletedSync: number;
+    opsCompletedAsync: number;
+    opsCompletedAsyncUnref: number;
+    bytesSentControl: number;
+    bytesSentData: number;
+    bytesReceived: number;
+  }
 }
 
 declare function fetch(
   input: Request | URL | string,
   init?: RequestInit & { client: Deno.HttpClient },
 ): Promise<Response>;
+
+declare interface WorkerOptions {
+  /** UNSTABLE: New API.
+   *
+   * Set deno.namespace to `true` to make `Deno` namespace and all of its
+   * methods available to the worker environment. Defaults to `false`.
+   *
+   * Configure deno.permissions options to change the level of access the worker will
+   * have. By default it will inherit the permissions of its parent thread. The permissions
+   * of a worker can't be extended beyond its parent's permissions reach.
+   * - "inherit" will take the permissions of the thread the worker is created in
+   * - You can disable/enable permissions all together by passing a boolean
+   * - You can provide a list of routes relative to the file the worker
+   *   is created in to limit the access of the worker (read/write permissions only)
+   *
+   * Example:
+   *
+   * ```ts
+   * // mod.ts
+   * const worker = new Worker(
+   *   new URL("deno_worker.ts", import.meta.url).href, {
+   *     type: "module",
+   *     deno: {
+   *       namespace: true,
+   *       permissions: {
+   *         read: true,
+   *       },
+   *     },
+   *   }
+   * );
+   * worker.postMessage({ cmd: "readFile", fileName: "./log.txt" });
+   *
+   * // deno_worker.ts
+   *
+   *
+   * self.onmessage = async function (e) {
+   *     const { cmd, fileName } = e.data;
+   *     if (cmd !== "readFile") {
+   *         throw new Error("Invalid command");
+   *     }
+   *     const buf = await Deno.readFile(fileName);
+   *     const fileContents = new TextDecoder().decode(buf);
+   *     console.log(fileContents);
+   * }
+   *
+   * // $ cat log.txt
+   * // hello world
+   * // hello world 2
+   *
+   * // $ deno run --allow-read mod.ts
+   * // hello world
+   * // hello world2
+   * ```
+   */
+  // TODO(Soremwar)
+  // `deno: boolean` is kept for backwards compatibility with the previous
+  // worker options implementation. Remove for 2.0.
+  deno?: boolean | {
+    namespace?: boolean;
+    /** Set to `"none"` to disable all the permissions in the worker. */
+    permissions?: "inherit" | "none" | {
+      env?: "inherit" | boolean;
+      hrtime?: "inherit" | boolean;
+      /** The format of the net access list must be `hostname[:port]`
+       * in order to be resolved.
+       *
+       * ```
+       * net: ["https://deno.land", "localhost:8080"],
+       * ```
+       * */
+      net?: "inherit" | boolean | string[];
+      plugin?: "inherit" | boolean;
+      read?: "inherit" | boolean | Array<string | URL>;
+      run?: "inherit" | boolean;
+      write?: "inherit" | boolean | Array<string | URL>;
+    };
+  };
+}

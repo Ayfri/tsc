@@ -1,16 +1,11 @@
 {
 	"compilerOptions": {
+		"alwaysStrict": true,
 		"lib": [
 			"ESNext",
 			"dom"
 		],
 		"pretty": true,
 		"strict": true,
-	},
-	"include": [
-		"./src/**/*.ts",
-		"configs.ts",
-		"mod.ts",
-		"lib.deno.d.ts"
-	]
+	}
 }
