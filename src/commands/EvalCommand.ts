@@ -9,13 +9,13 @@ export default class EvalCommand extends Command {
 
 	public static async compileTSToJS(code: string) {
 		const {files} = await Deno.emit('/temp', {
-			sources:         {
+			sources: {
 				'/temp': code,
 			},
 			compilerOptions: {
 				noImplicitAny: false,
-				sourceMap:     false,
-				declaration:   false,
+				sourceMap: false,
+				declaration: false,
 			},
 		});
 

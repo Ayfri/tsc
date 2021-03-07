@@ -1,11 +1,11 @@
 import {CommandClient, dotEnvConfig, GatewayIntents, SEP} from './deps.ts';
 
 export const client = new CommandClient({
-	prefix:    'tsc',
-	owners:    ['386893236498857985'],
+	prefix: 'tsc',
+	owners: ['386893236498857985'],
 	allowBots: false,
-	token:     dotEnvConfig.token,
-	intents:   [
+	token: dotEnvConfig.token,
+	intents: [
 		GatewayIntents.GUILD_MESSAGES,
 		GatewayIntents.GUILDS,
 		GatewayIntents.DIRECT_MESSAGES,

@@ -8,6 +8,9 @@ export {
 	GatewayIntents,
 	Command,
 } from 'https://deno.land/x/harmony/mod.ts';
-export type {CommandContext} from 'https://deno.land/x/harmony/mod.ts';
+
+export type {
+	CommandContext,
+} from 'https://deno.land/x/harmony/mod.ts';
 
 export const dotEnvConfig = config();

@@ -3,10 +3,10 @@ import {client} from '../../mod.ts';
 import {commandToFile} from '../utils/utils.ts';
 
 export default class ReloadCommand extends Command {
-	private reloadCounter: number = 0;
 	public name = 'reload';
 	public aliases = ['rl'];
 	public whitelistedUsers = client.owners;
+	private reloadCounter: number = 0;
 
 	public async execute(ctx: CommandContext): Promise<void> {
 		const commandName: string = ctx.args[0];
