@@ -1,11 +1,26 @@
 import {Command, CommandContext, Message} from '../../deps.ts';
 import {client} from '../../mod.ts';
-import {codeBlock, compileTSToJS, crop} from '../utils/utils.ts';
+import {codeBlock, crop} from '../utils/utils.ts';
 
 export default class EvalCommand extends Command {
-	name = 'eval';
-	aliases = ['e', 'run', 'js', 'ts'];
-	whitelistedUsers = client.owners;
+	public name = 'eval';
+	public aliases = ['e', 'run', 'js', 'ts'];
+	public whitelistedUsers = client.owners;
+
+	public static async compileTSToJS(code: string) {
+		const {files} = await Deno.emit('/temp', {
+			sources:         {
+				'/temp': code,
+			},
+			compilerOptions: {
+				noImplicitAny: false,
+				sourceMap:     false,
+				declaration:   false,
+			},
+		});
+
+		return Object.values(files)[0];
+	}
 
 	public async execute(ctx: CommandContext): Promise<void> {
 		function send(
@@ -41,7 +56,7 @@ export default class EvalCommand extends Command {
 
 			const code = ctx.args.join(' ').replace(/```(?:[a-z0-9]{1,12})?([\S\s]*)```/g, '$1');
 
-			await eval(await compileTSToJS(`wait(async function(){${code}})`));
+			await eval(await EvalCommand.compileTSToJS(`wait(async function(){${code}})`));
 		} catch (e) {
 			await sendJS(decodeURI(Deno.inspect(e, {
 				sorted: true,
