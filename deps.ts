@@ -7,6 +7,7 @@ export {
 	Message,
 	GatewayIntents,
 	Command,
+	Embed
 } from 'https://deno.land/x/harmony/mod.ts';
 
 export type {
