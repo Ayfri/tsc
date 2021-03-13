@@ -5,7 +5,8 @@ import {codeBlock, crop} from '../utils/utils.ts';
 export default class EvalCommand extends Command {
 	public name = 'eval';
 	public aliases = ['e', 'run', 'js', 'ts'];
-	public whitelistedUsers = client.owners;
+	public category = 'dev';
+	public ownerOnly = true;
 
 	public static async compileTSToJS(code: string) {
 		const {files} = await Deno.emit('/temp', {
@@ -54,9 +55,10 @@ export default class EvalCommand extends Command {
 				}
 			}
 
-			const code = ctx.args.join(' ').replace(/```(?:[a-z0-9]{1,12})?([\S\s]*)```/g, '$1');
+			let code = ctx.args.join(' ').replace(/```(?:[a-z0-9]{1,12})?([\S\s]*)```/g, '$1');
+			code = `wait(async function(){ with(ctx){${code}}}`;
 
-			await eval(await EvalCommand.compileTSToJS(`wait(async function(){${code}})`));
+			await eval(await EvalCommand.compileTSToJS(code));
 		} catch (e) {
 			await sendJS(decodeURI(Deno.inspect(e, {
 				sorted: true,
