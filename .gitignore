@@ -1,3 +1,4 @@
 .idea
 .env
 assets/temp.ts
+lib.deno.d.ts
