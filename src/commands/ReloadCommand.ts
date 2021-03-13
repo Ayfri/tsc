@@ -5,7 +5,8 @@ import {commandToFile} from '../utils/utils.ts';
 export default class ReloadCommand extends Command {
 	public name = 'reload';
 	public aliases = ['rl'];
-	public whitelistedUsers = client.owners;
+	public category = 'dev';
+	public ownerOnly = true;
 	private reloadCounter: number = 0;
 
 	public async execute(ctx: CommandContext): Promise<void> {
