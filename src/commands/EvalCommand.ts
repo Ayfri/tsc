@@ -1,5 +1,4 @@
 import {Command, CommandContext, Message} from '../../deps.ts';
-import {client} from '../../mod.ts';
 import {codeBlock, crop} from '../utils/utils.ts';
 
 export default class EvalCommand extends Command {
@@ -24,23 +23,25 @@ export default class EvalCommand extends Command {
 	}
 
 	public async execute(ctx: CommandContext): Promise<void> {
-		function send(
-			content: string,
-		): Promise<Message> {
-			return ctx.message.reply(crop(content, 2000));
+		const {
+			client,
+			command,
+			message,
+			channel,
+			guild,
+			args,
+			author,
+		} = ctx;
+
+		function send(content: string): Promise<Message> {
+			return message.reply(crop(content, 2000));
 		}
 
-		function sendJS(
-			content: string,
-			channelID: string = ctx.channel.id,
-		): Promise<Message> {
+		function sendJS(content: string, channelID: string = channel.id): Promise<Message> {
 			return sendMarkdown(content, 'ts');
 		}
 
-		function sendMarkdown(
-			content: string,
-			language: string = 'ts',
-		): Promise<Message> {
+		function sendMarkdown(content: string, language: string = 'ts'): Promise<Message> {
 			return send(codeBlock(content, language));
 		}
 
@@ -56,9 +57,9 @@ export default class EvalCommand extends Command {
 			}
 
 			let code = ctx.args.join(' ').replace(/```(?:[a-z0-9]{1,12})?([\S\s]*)```/g, '$1');
-			code = `wait(async function(){ with(ctx){${code}}}`;
+			code = `wait(async function(){${code}})`;
 
-			await eval(await EvalCommand.compileTSToJS(code));
+			eval(await EvalCommand.compileTSToJS(code));
 		} catch (e) {
 			await sendJS(decodeURI(Deno.inspect(e, {
 				sorted: true,
