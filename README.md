@@ -7,7 +7,7 @@ TSC-Bot is a discord bot made in TypeScript using Deno and the [Harmony](https:/
 
 Its purpose is to offer fun and utils commands for TypeScript/JavaScript/other developers on Discord.
 
-## How to use it ?
+## How to use it
 
 I recommend you to clone the project and put your own token & owners, so you will be able to use all the commands.
 Because some, like the `eval` command, can damage your machine if anyone can use it.
