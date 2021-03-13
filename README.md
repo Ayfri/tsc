@@ -1,6 +1,8 @@
 ![GitHub repo size](https://img.shields.io/github/repo-size/Ayfri/tsc)
 ![deno version](https://img.shields.io/badge/deno-1.8.1-grey?logo=deno)
 
+![Banner](./assets/TSC-Bot%20banner.png)
+
 # TSC Bot
 
 TSC-Bot is a discord bot made in TypeScript using Deno and the [Harmony](https://github.com/harmonyland/harmony) module.
