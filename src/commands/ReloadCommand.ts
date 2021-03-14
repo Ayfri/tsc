@@ -15,13 +15,17 @@ export default class ReloadCommand extends Command {
 		if (oldCommand) {
 			console.log(`Reloading command '${oldCommand.name}'.`);
 
-			client.commands.delete(oldCommand);
-			const fullPath: string = `file:///${Deno.realPathSync(dotEnvConfig.commandsFolder) + SEP + commandToFile(oldCommand.name)}#${this.reloadCounter}`;
-			const newCommand: any = new ((await import(fullPath)).default)();
-			client.commands.list.set(`${newCommand.name}-0`, newCommand);
+			try {
+				client.commands.delete(oldCommand);
+				const fullPath: string = `file:///${Deno.realPathSync(dotEnvConfig.commandsFolder) + SEP + commandToFile(oldCommand.name)}#${this.reloadCounter}`;
+				const newCommand: any = new ((await import(fullPath)).default)();
+				client.commands.list.set(`${newCommand.name}-0`, newCommand);
 
-			ctx.message.reply(`Reloaded command \`${newCommand.name}\` !`);
-			this.reloadCounter++;
+				ctx.message.reply(`Reloaded command \`${newCommand.name}\` !`);
+				this.reloadCounter++;
+			} catch(e) {
+				console.warn(e);
+			}
 		}
 	}
 }
