@@ -1,7 +1,7 @@
 import {CommandClient, dotEnvConfig, GatewayIntents, SEP} from './deps.ts';
 
 export const client = new CommandClient({
-	prefix: 'tsc',
+	prefix: dotEnvConfig.prefix,
 	owners: dotEnvConfig.owners.split(','),
 	allowBots: false,
 	token: dotEnvConfig.token,
