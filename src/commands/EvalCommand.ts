@@ -45,15 +45,17 @@ export default class EvalCommand extends Command {
 			prefix,
 		} = ctx;
 
-		function send(content: string): Promise<Message> {
+		function send(content: string): Promise<Message> | undefined {
+			if (!content) return;
+			if (typeof content === 'object') content = Deno.inspect(content, {sorted: true});
 			return message.reply(crop(content, 2000));
 		}
 
-		function sendJS(content: string, channelID: string = channel.id): Promise<Message> {
+		function sendJS(content: string, channelID: string = channel.id): Promise<Message> | undefined {
 			return sendMarkdown(content, 'ts');
 		}
 
-		function sendMarkdown(content: string, language: string = 'ts'): Promise<Message> {
+		function sendMarkdown(content: string, language: string = 'ts'): Promise<Message> | undefined {
 			return send(codeBlock(content, language));
 		}
 
@@ -69,7 +71,7 @@ export default class EvalCommand extends Command {
 			if (!!result || !!(await result)) await sendJS(result instanceof Promise ? await result : result);
 
 			if (errors && !JSCode.length) {
-				ctx.message.addReaction(ERROR_EMOJI);
+				await ctx.message.addReaction(ERROR_EMOJI);
 				await message.reply(fancyFormatDiagnostics(result.errors));
 			}
 
