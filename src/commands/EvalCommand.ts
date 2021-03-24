@@ -1,4 +1,5 @@
 import {Command, CommandContext, Message} from '../../deps.ts';
+import {ERROR_EMOJI, WAIT_EMOJI} from '../constants.ts';
 import {codeBlock, crop, fancyFormatDiagnostics} from '../utils/utils.ts';
 
 export default class EvalCommand extends Command {
@@ -30,6 +31,8 @@ export default class EvalCommand extends Command {
 	}
 
 	public async execute(ctx: CommandContext): Promise<void> {
+		await ctx.message.addReaction(WAIT_EMOJI);
+
 		const {
 			argString,
 			client,
@@ -65,8 +68,14 @@ export default class EvalCommand extends Command {
 			const result = eval(JSCode);
 			if (!!result || !!(await result)) await sendJS(result instanceof Promise ? await result : result);
 
-			if (errors && !JSCode.length) message.reply(fancyFormatDiagnostics(result.errors));
+			if (errors && !JSCode.length) {
+				ctx.message.addReaction(ERROR_EMOJI);
+				await message.reply(fancyFormatDiagnostics(result.errors));
+			}
+
+			await ctx.message.removeReaction(WAIT_EMOJI, ctx.client.user);
 		} catch (e) {
+			ctx.message.addReaction(ERROR_EMOJI);
 			if (e) await sendJS(decodeURI(Deno.inspect(e, {
 				sorted: true,
 			})));

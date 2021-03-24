@@ -1,5 +1,6 @@
 import {Command, CommandContext, dotEnvConfig, SEP} from '../../deps.ts';
 import {client} from '../../mod.ts';
+import {ERROR_EMOJI, WAIT_EMOJI} from '../constants.ts';
 import {commandToFile} from '../utils/utils.ts';
 
 export default class ReloadCommand extends Command {
@@ -13,6 +14,7 @@ export default class ReloadCommand extends Command {
 		const commandName: string = ctx.args[0];
 		const oldCommand: Command | undefined = ctx.client.commands.find(commandName);
 		if (oldCommand) {
+			ctx.message.addReaction(WAIT_EMOJI);
 			console.log(`Reloading command '${oldCommand.name}'.`);
 
 			try {
@@ -23,9 +25,14 @@ export default class ReloadCommand extends Command {
 
 				ctx.message.reply(`Reloaded command \`${newCommand.name}\` !`);
 				this.reloadCounter++;
-			} catch(e) {
+				ctx.message.removeReaction(ERROR_EMOJI, client.user);
+
+			} catch (e) {
 				console.warn(e);
 			}
+		} else {
+			ctx.message.addReaction(ERROR_EMOJI);
+			ctx.message.reply(`Command \`${commandName}\` not found.`);
 		}
 	}
 }
