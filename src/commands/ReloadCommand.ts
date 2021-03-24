@@ -27,12 +27,12 @@ export default class ReloadCommand extends Command {
 				this.reloadCounter++;
 				ctx.message.removeReaction(ERROR_EMOJI, client.user);
 
-			} catch(e) {
+			} catch (e) {
 				console.warn(e);
 			}
 		} else {
 			ctx.message.addReaction(ERROR_EMOJI);
-			ctx.message.reply(`Command \`${commandName}\` not found.`)
+			ctx.message.reply(`Command \`${commandName}\` not found.`);
 		}
 	}
 }

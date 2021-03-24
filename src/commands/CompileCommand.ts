@@ -48,7 +48,7 @@ export default class CompileCommand extends Command {
 		if (types.trim().length > 0) ctx.channel.send(`> **Types :**\n${codeBlock(crop(types, 1990), 'ts')}`);
 		if (errors.length > 0) {
 			ctx.message.addReaction(ERROR_EMOJI);
-			await ctx.channel.send(`> **Errors :**\n${(fancyFormatDiagnostics(errors))}`);
+			await ctx.channel.send(`> **Errors :**\n${fancyFormatDiagnostics(errors)}`);
 		}
 
 		await ctx.message.removeReaction(WAIT_EMOJI, ctx.client.user);
