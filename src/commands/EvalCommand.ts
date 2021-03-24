@@ -1,5 +1,5 @@
 import {Command, CommandContext, Message} from '../../deps.ts';
-import {codeBlock, crop} from '../utils/utils.ts';
+import {codeBlock, crop, fancyFormatDiagnostics} from '../utils/utils.ts';
 
 export default class EvalCommand extends Command {
 	public name = 'eval';
@@ -8,22 +8,30 @@ export default class EvalCommand extends Command {
 	public ownerOnly = true;
 
 	public static async compileTSToJS(code: string) {
-		const {files} = await Deno.emit('/temp', {
+		const result = await Deno.emit('/assets/temp.ts', {
 			sources: {
-				'/temp': code,
+				'/assets/temp.ts': code,
 			},
 			compilerOptions: {
 				noImplicitAny: false,
 				sourceMap: false,
-				declaration: false,
+				declaration: true,
+				module: 'esnext',
+				target: 'esnext',
+				alwaysStrict: false,
+				strict: true,
 			},
 		});
 
-		return Object.values(files)[0];
+		return {
+			JSCode: Object.values(result.files)[0],
+			errors: result.diagnostics,
+		};
 	}
 
 	public async execute(ctx: CommandContext): Promise<void> {
 		const {
+			argString,
 			client,
 			command,
 			message,
@@ -31,6 +39,7 @@ export default class EvalCommand extends Command {
 			guild,
 			args,
 			author,
+			prefix,
 		} = ctx;
 
 		function send(content: string): Promise<Message> {
@@ -45,23 +54,20 @@ export default class EvalCommand extends Command {
 			return send(codeBlock(content, language));
 		}
 
+		let code = argString.replace(new RegExp(`\`\`\`(?:[a-z0-9]{1,12})?([\\S\\s]*)\`\`\``), '$1');
+		code = `(async function(){${code}})()`;
 		try {
-			async function wait(callback: () => any): Promise<void> {
-				try {
-					await callback();
-				} catch (e) {
-					await sendJS(decodeURI(Deno.inspect(e, {
-						sorted: true,
-					})));
-				}
-			}
+			const {
+				JSCode,
+				errors,
+			} = await EvalCommand.compileTSToJS(code);
 
-			let code = ctx.args.join(' ').replace(/```(?:[a-z0-9]{1,12})?([\S\s]*)```/g, '$1');
-			code = `wait(async function(){${code}})`;
+			const result = eval(JSCode);
+			if (!!result || !!(await result)) await sendJS(result instanceof Promise ? await result : result);
 
-			eval(await EvalCommand.compileTSToJS(code));
+			if (errors && !JSCode.length) message.reply(fancyFormatDiagnostics(result.errors));
 		} catch (e) {
-			await sendJS(decodeURI(Deno.inspect(e, {
+			if (e) await sendJS(decodeURI(Deno.inspect(e, {
 				sorted: true,
 			})));
 		}
