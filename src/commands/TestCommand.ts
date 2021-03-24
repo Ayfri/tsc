@@ -1,5 +1,4 @@
 import {Command, CommandContext} from '../../deps.ts';
-import {LABS_TS, WAIT_EMOJI} from '../constants.ts';
 
 export default class TestCommand extends Command {
 	public name = 'test';
