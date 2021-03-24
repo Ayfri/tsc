@@ -14,7 +14,7 @@ export default class HelpCommand extends Command {
 			if (command.description) embed.description = command.description;
 			embed.description += `Category: **${command.category}**\n`;
 			let permissionsField = '';
-			if (command.ownerOnly) embed.description += 'Only available by the owner of the bot.';
+			if (command.ownerOnly) embed.description += 'Only available by the owners of the bot.';
 			if (command.guildOnly) embed.description += 'Only available on a guild.';
 			if (command.dmOnly) embed.description += 'Only available in DMs.';
 			if (command.nsfw) embed.description += 'Only available in nsfw channels.';
